@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Hub Operativo &ndash; A Casa di Gina &amp; Padre Sergio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        html,body{height:100%;width:100%;overflow:hidden}
+        body{user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+             font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+        ::-webkit-scrollbar{display:none}
+        @keyframes bounceIn{
+            0%{opacity:0;transform:scale(.5)}
+            60%{opacity:1;transform:scale(1.05)}
+            80%{transform:scale(.96)}
+            100%{transform:scale(1)}
+        }
+        .anim-bounce{animation:bounceIn .45s cubic-bezier(.22,1,.36,1)}
+        .room-card{border:1px solid rgba(255,255,255,.04);border-left-width:3px;
+                   transition:background-color .4s ease,border-left-color .4s ease}
+        #pin-modal{z-index:80}
+        #alert-modal{z-index:70}
+        .lock-overlay{position:absolute;inset:0;display:flex;flex-direction:column;
+                      align-items:center;justify-content:center;gap:8px;
+                      background:rgba(3,7,18,.82);backdrop-filter:blur(5px);z-index:5;}
+    </style>
+</head>
+<body class="flex flex-col bg-slate-950 text-slate-100" onclick="onTouch()">
+
+<!-- HEADER -->
+<header class="flex items-center justify-between px-5 shrink-0 bg-slate-900 border-b border-white/5 shadow-xl" style="height:78px;">
+    <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center shadow-lg shrink-0"
+             style="background:linear-gradient(135deg,#059669,#047857);">
+            <i class="fa-solid fa-house-chimney text-white text-xl"></i>
+        </div>
+        <div>
+            <div class="text-xl font-black text-white leading-none">A Casa di Gina</div>
+            <div class="text-xs text-emerald-400 uppercase tracking-widest font-semibold mt-0.5">
+                &amp; Padre Sergio &middot; Hub Operativo
+            </div>
+        </div>
+    </div>
+    <div id="hdr-date" class="text-base font-medium text-slate-400 capitalize hidden sm:block"></div>
+    <div class="flex items-center gap-3">
+        <!-- Meteo Polignano -->
+        <div class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/5" style="background:#0d1f14;">
+            <div class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#10b981;"></div>
+            <i id="wx-icon-p" class="fa-solid fa-cloud-sun text-lg" style="color:#fbbf24;"></i>
+            <div>
+                <div id="wx-temp-p" class="text-sm font-bold text-white leading-none">--&deg;</div>
+                <div class="text-emerald-800 mt-0.5" style="font-size:10px;">Polignano</div>
+            </div>
+        </div>
+        <!-- Meteo Monopoli -->
+        <div class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/5" style="background:#0d1325;">
+            <div class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#3b82f6;"></div>
+            <i id="wx-icon-m" class="fa-solid fa-cloud-sun text-lg" style="color:#fbbf24;"></i>
+            <div>
+                <div id="wx-temp-m" class="text-sm font-bold text-white leading-none">--&deg;</div>
+                <div class="text-blue-800 mt-0.5" style="font-size:10px;">Monopoli</div>
+            </div>
+        </div>
+        <!-- Orologio -->
+        <div class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/5 bg-slate-950">
+            <i class="fa-regular fa-clock text-emerald-500 text-sm"></i>
+            <span id="hdr-clock" class="text-3xl font-mono font-black text-white tracking-tighter">--:--</span>
+        </div>
+        <!-- Lock button -->
+        <button id="btn-lock" onclick="onLockPress(event)"
+                class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition-all"
+                style="background:#d97706;color:#451a03;">
+            <i id="ico-lock" class="fa-solid fa-lock text-base"></i>
+            <span id="lbl-lock">Sblocca</span>
+        </button>
+    </div>
+</header>
+
+<!-- MAIN -->
+<main class="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
+    <!-- Colonna A Casa di Gina -->
+    <section class="flex flex-col gap-2.5 min-h-0" style="flex:58;">
+        <div class="flex items-center gap-2 px-1 shrink-0">
+            <div class="w-2 h-2 rounded-full" style="background:#10b981;box-shadow:0 0 6px #10b98170;"></div>
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest">A Casa di Gina &middot; Polignano a Mare</span>
+            <div class="flex-1 h-px bg-emerald-900/30"></div>
+            <span class="text-xs text-slate-700">Holidu &amp; Airbnb</span>
+        </div>
+        <div id="card-ester" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0"
+             style="background:#0a0f1a;border-left-color:#475569;">
+            <div class="px-4 py-3 flex items-center justify-between shrink-0"
+                 style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
+                <span class="font-bold text-slate-200 text-base">La Camera di Ester</span>
+                <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
+                      style="background:#475569;">caricamento...</span>
+            </div>
+            <div class="flex-1 flex items-center justify-center text-slate-700">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i>
+            </div>
+        </div>
+        <div id="card-ragazze" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0"
+             style="background:#0a0f1a;border-left-color:#475569;">
+            <div class="px-4 py-3 flex items-center justify-between shrink-0"
+                 style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
+                <span class="font-bold text-slate-200 text-base">La Camera delle Ragazze</span>
+                <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
+                      style="background:#475569;">caricamento...</span>
+            </div>
+            <div class="flex-1 flex items-center justify-center text-slate-700">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i>
+            </div>
+        </div>
+    </section>
+    <!-- Colonna Padre Sergio -->
+    <section class="flex flex-col gap-2.5 min-h-0" style="flex:42;">
+        <div class="flex items-center gap-2 px-1 shrink-0">
+            <div class="w-2 h-2 rounded-full" style="background:#3b82f6;box-shadow:0 0 6px #3b82f670;"></div>
+            <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Padre Sergio &middot; Monopoli</span>
+            <div class="flex-1 h-px bg-blue-900/30"></div>
+            <span class="text-xs text-slate-700">Airbnb</span>
+        </div>
+        <div id="card-sergio" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0"
+             style="background:#0a0f1a;border-left-color:#475569;">
+            <div class="px-4 py-3 flex items-center justify-between shrink-0"
+                 style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
+                <span class="font-bold text-slate-200 text-base">Padre Sergio</span>
+                <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
+                      style="background:#475569;">caricamento...</span>
+            </div>
+            <div class="flex-1 flex items-center justify-center text-slate-700">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- FOOTER -->
+<footer class="shrink-0 flex items-center justify-between px-5 bg-slate-950 border-t border-white/5" style="height:46px;">
+    <div class="flex items-center gap-2.5">
+        <div id="sync-dot" class="w-2 h-2 rounded-full transition-all duration-500" style="background:#475569;"></div>
+        <span id="sync-msg" class="text-xs font-medium text-slate-600">Connessione in corso...</span>
+    </div>
+    <div class="flex items-center gap-4 text-xs text-slate-700">
+        <span>Prossimo: <span id="next-sync">--:--</span></span>
+        <button onclick="forceSync()" class="hover:text-slate-400 transition-colors flex items-center gap-1">
+            <i class="fa-solid fa-rotate-right"></i> Aggiorna
+        </button>
+        <button onclick="toggleSim(event)" class="hover:text-slate-500 transition-colors ml-2">
+            <i class="fa-solid fa-gear"></i>
+        </button>
+    </div>
+</footer>
+
+<!-- SIM MENU -->
+<div id="sim-menu" class="hidden fixed bottom-12 right-4 rounded-xl p-3 shadow-2xl"
+     style="z-index:60;background:#1e293b;border:1px solid rgba(255,255,255,.08);min-width:220px;">
+    <div class="text-xs text-slate-600 font-bold uppercase tracking-wider mb-2 pb-2 border-b border-white/5">
+        Strumenti Test
+    </div>
+    <button onclick="simulate('new')"
+            class="w-full text-left text-sm text-emerald-400 hover:bg-emerald-900/20 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors">
+        <i class="fa-solid fa-bell w-4"></i> Simula Nuova Prenotazione
+    </button>
+    <button onclick="simulate('cancel')"
+            class="w-full text-left text-sm text-red-400 hover:bg-red-900/20 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors">
+        <i class="fa-solid fa-xmark w-4"></i> Simula Cancellazione
+    </button>
+    <button onclick="forceSync();hideSim();"
+            class="w-full text-left text-sm text-blue-400 hover:bg-blue-900/20 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors">
+        <i class="fa-solid fa-rotate-right w-4"></i> Forza Sincronizzazione
+    </button>
+</div>
+
+<!-- ALERT MODAL -->
+<div id="alert-modal" class="hidden fixed inset-0 flex items-center justify-center p-6"
+     style="background:rgba(0,0,0,.85);backdrop-filter:blur(16px);">
+    <div id="alert-wrap" class="w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl anim-bounce">
+        <div id="alert-grad" class="p-1 rounded-3xl" style="background:linear-gradient(135deg,#10b981,#059669);">
+            <div class="rounded-3xl p-7 relative overflow-hidden" style="background:#030712;">
+                <div id="alert-glow" class="absolute -top-20 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full blur-3xl opacity-15"
+                     style="background:#10b981;"></div>
+                <div class="relative flex flex-col items-center text-center" style="z-index:1;">
+                    <i id="alert-icon" class="fa-solid fa-calendar-check text-6xl text-emerald-400 mb-4 fa-bounce"></i>
+                    <h2 id="alert-title" class="text-3xl font-black text-white uppercase tracking-wide mb-1"></h2>
+                    <p id="alert-subtitle" class="text-sm text-slate-500 mb-5"></p>
+                    <div class="w-full rounded-xl p-5 text-left mb-5"
+                         style="background:#0f172a;border:1px solid rgba(255,255,255,.06);">
+                        <div id="alert-room" class="text-xl font-bold text-white mb-0.5"></div>
+                        <div id="alert-info" class="text-sm text-slate-500 mb-4"></div>
+                        <div class="flex items-center justify-between pt-3"
+                             style="border-top:1px solid rgba(255,255,255,.06);">
+                            <span class="text-xs text-slate-600 uppercase tracking-wider">Ospite</span>
+                            <span id="alert-guest" class="text-xl font-bold text-white">---</span>
+                        </div>
+                    </div>
+                    <button id="alert-btn" onclick="onAlertBtn()"
+                            class="font-bold text-lg py-3.5 px-10 rounded-full shadow-lg flex items-center gap-2 transition-all"
+                            style="background:#d97706;color:#451a03;">
+                        <i class="fa-solid fa-lock"></i> Sblocca per i Dettagli
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PIN MODAL -->
+<div id="pin-modal" class="hidden fixed inset-0 flex items-center justify-center"
+     style="background:rgba(3,7,18,.94);backdrop-filter:blur(8px);">
+    <div class="flex flex-col items-center rounded-2xl p-7 shadow-2xl"
+         style="background:#0f172a;border:1px solid rgba(255,255,255,.07);width:330px;">
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-3"
+             style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);">
+            <i class="fa-solid fa-lock text-amber-400 text-xl"></i>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-1">Sblocco Sicurezza</h3>
+        <p class="text-xs text-slate-500 text-center mb-6">Inserisci il PIN per vedere i dati degli ospiti</p>
+        <div class="flex gap-3 mb-6">
+            <div class="pin-dot w-11 h-11 rounded-full border-2 flex items-center justify-center text-xl font-bold text-amber-400 transition-all"
+                 style="border-color:#334155;background:#1e293b;"></div>
+            <div class="pin-dot w-11 h-11 rounded-full border-2 flex items-center justify-center text-xl font-bold text-amber-400 transition-all"
+                 style="border-color:#334155;background:#1e293b;"></div>
+            <div class="pin-dot w-11 h-11 rounded-full border-2 flex items-center justify-center text-xl font-bold text-amber-400 transition-all"
+                 style="border-color:#334155;background:#1e293b;"></div>
+            <div class="pin-dot w-11 h-11 rounded-full border-2 flex items-center justify-center text-xl font-bold text-amber-400 transition-all"
+                 style="border-color:#334155;background:#1e293b;"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-2.5 w-full mb-5">
+            <button onclick="pinKey(1)" class="bg-slate-800 hover:bg-slate-700 text-white text-2xl font-bold py-3.5 rounded-xl transition-colors">1</button>
+            <button onclick="pinKey(2)" class="bg-slate-800 hover:bg-slate-700 text-white text-2xl font-bold py-3.5 rounded-xl transition-colors">2</button>
+            <button onclick="pinKey(3)" class="bg-slate-800 hover:bg-slate-700 text-white text-2xl font-bold py-3.5 rounded-xl transition-colors">3</button>
+            <button onclick="pinKey(4)" class="bg-slate-800 hover:bg-slate-700 text-white text-2xl font-bold py-3.5 rounded-xl transition-colors">4</button>
+            <button onclick="pinKey(5)" class="bg-slate-800 hover:bg-slate-700 text-white text-2xl font-bold py-3.5 rounded-xl transition-colors">5</button>
+            <button onclick="pinKey(6)" class="bg-slate-800 hover:bg-slate-700 text-white text-2xl font-bold py-3.5 rounded-xl transition-colors">6</button>
+            <button onclick="pinKey(7)" class="bg-slate-800 hover:bg-slate-700 text-white text-2xl font-bold py-3.5 rounded-xl transition-colors">7</button>
+            <button onclick="pinKey(8)" class="bg-slate-800 hover:bg-slate-700 text-white text-2xl font-bold py-3.5 rounded-xl transition-colors">8</button>
+            <button onclick="pinKey(9)" class="bg-slate-800 hover:bg-slate-700 text-white text-2xl font-bold py-3.5 rounded-xl transition-colors">9</button>
+            <button onclick="pinClear()" class="text-slate-500 text-xs font-bold py-3.5 rounded-xl hover:text-slate-300 transition-colors" style="background:#0a0f1a;">CANC</button>
+            <button onclick="pinKey(0)" class="bg-slate-800 hover:bg-slate-700 text-white text-2xl font-bold py-3.5 rounded-xl transition-colors">0</button>
+            <button id="pin-ok" onclick="pinSubmit()" class="text-slate-600 text-sm font-bold py-3.5 rounded-xl transition-all" style="background:#0a0f1a;">OK</button>
+        </div>
+        <button onclick="pinClose()" class="text-slate-600 hover:text-slate-400 text-xs uppercase tracking-wider transition-colors">Annulla</button>
+    </div>
+</div>
+
+<script>
+// ── COSTANTI (iniettate da write_html.py) ─────────────────────────
+const API_URL  = "https://script.google.com/macros/s/AKfycbyLEM4o93Mj77IsPlCqj3DP8CDp65ejAAtP1KDFOz92GxYfwvZ1Kw_G8A5cKwoH2z0q/exec";
+const PIN_CODE = "2305";
+
+// ── CONFIG ────────────────────────────────────────────────────────
+const SYNC_MS  = 1 * 60 * 1000;
+const WX_P_LAT = 40.9929, WX_P_LON = 17.1707;  // Polignano a Mare
+const WX_M_LAT = 40.9590, WX_M_LON = 17.3007;  // Monopoli
+
+const CARD_IDS = {
+    'La Camera di Ester':      'card-ester',
+    'La Camera delle Ragazze': 'card-ragazze',
+    'Padre Sergio':            'card-sergio'
+};
+
+const ST = {
+    arrival:    { label: 'ARRIVO OGGI', icon: 'fa-plane-arrival',        color: '#818cf8', bg: '#1e1b4b' },
+    departure:  { label: 'PARTENZA',    icon: 'fa-plane-departure',      color: '#fb923c', bg: '#431407' },
+    occupied:   { label: 'IN SEDE',     icon: 'fa-house-user',           color: '#34d399', bg: '#022c22' },
+    changeover: { label: 'CAMBIO OGGI', icon: 'fa-arrows-rotate',        color: '#e879f9', bg: '#2e1065' },
+    free:       { label: 'LIBERA',      icon: 'fa-circle-check',         color: '#64748b', bg: '#0a0f1a' },
+    blocked:    { label: 'BLOCCATA',    icon: 'fa-ban',                  color: '#fb7185', bg: '#4c0519' },
+    error:      { label: 'ERRORE',      icon: 'fa-triangle-exclamation', color: '#f87171', bg: '#450a0a' }
+};
+
+// ── STATO ─────────────────────────────────────────────────────────
+let isLocked    = true;
+let pinStr      = '';
+let lockTimer   = null;
+let syncTimer   = null;
+let prevUidMap  = new Map(); // uid → {name, room, property}
+let firstLoad   = true;
+let lastRooms   = null;
+let alertData   = null;
+let audioCtx    = null;
+
+// ── AVVIO ─────────────────────────────────────────────────────────
+document.addEventListener('click', initAudio, { once: true });
+clockTick();
+setInterval(clockTick, 1000);
+getWeatherBoth();
+setInterval(getWeatherBoth, 30 * 60 * 1000);
+syncData();
+
+// ════════════════════════════════════════════════════════════════
+// AUDIO (Web Audio API – funziona con file://, niente file esterni)
+// ════════════════════════════════════════════════════════════════
+function initAudio() {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+}
+function playSound(type) {
+    if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return; } }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    // Nuova prenotazione: 4 note ascendenti (Do-Mi-Sol-Do alta)
+    // Cancellazione:      4 note discendenti (Sol-Mi-Do-Sol bassa)
+    const notes = type === 'new'
+        ? [{ f: 523, t: 0 }, { f: 659, t: 0.20 }, { f: 784, t: 0.40 }, { f: 1047, t: 0.60 }]
+        : [{ f: 784, t: 0 }, { f: 659, t: 0.18 }, { f: 523, t: 0.36 }, { f:  392, t: 0.54 }];
+
+    notes.forEach(n => {
+        const osc  = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = n.f;
+        const s = audioCtx.currentTime + n.t;
+        gain.gain.setValueAtTime(0, s);
+        gain.gain.linearRampToValueAtTime(0.4, s + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, s + 0.5);
+        osc.start(s);
+        osc.stop(s + 0.55);
+    });
+}
+
+// ════════════════════════════════════════════════════════════════
+// SYNC DATI
+// ════════════════════════════════════════════════════════════════
+async function syncData() {
+    setSyncUI('pending');
+    if (!API_URL || API_URL === 'INSERISCI_QUI_URL') {
+        setSyncUI('error', 'URL non configurato');
+        ['card-ester', 'card-ragazze', 'card-sergio'].forEach(showSetupCard);
+        schedSync();
+        return;
+    }
+    try {
+        // Fetch con retry automatico su 404 (Google Apps Script intermittente)
+        let res = await fetch(API_URL);
+        if (res.status === 404) {
+            console.warn('[Sync] 404 - retry tra 5s...');
+            await new Promise(r => setTimeout(r, 5000));
+            res = await fetch(API_URL);
+        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const raw = await res.text();
+        if (raw.trim().startsWith('<')) throw new Error("Imposta accesso 'Chiunque' su Apps Script");
+        const data = JSON.parse(raw);
+        if (data.error) throw new Error(data.error);
+        lastRooms = data.rooms;
+        if (data.uids) {
+            const newMap = new Map(data.uids.map(u => [u.uid, u]));
+            if (!firstLoad) {
+                // Nuove prenotazioni: UID non presenti prima
+                for (const [uid, u] of newMap) {
+                    if (!prevUidMap.has(uid)) alertNewBooking(u);
+                }
+                // Cancellazioni: UID che erano presenti ma ora spariti
+                for (const [uid, u] of prevUidMap) {
+                    if (!newMap.has(uid)) alertCancellation(u);
+                }
+            }
+            prevUidMap = newMap;
+        }
+        firstLoad = false;
+        renderRooms(data.rooms);
+        setSyncUI('ok', data.serverTime || fmtTime(new Date()));
+    } catch(e) {
+        console.error('[Sync]', e);
+        setSyncUI('error', e.message);
+    }
+    schedSync();
+}
+
+function forceSync() { clearTimeout(syncTimer); syncData(); }
+function schedSync() {
+    clearTimeout(syncTimer);
+    const n = new Date(Date.now() + SYNC_MS);
+    document.getElementById('next-sync').textContent = fmtTime(n);
+    syncTimer = setTimeout(syncData, SYNC_MS);
+}
+function renderRooms(rooms) { if (rooms) rooms.forEach(r => renderCard(r)); }
+
+// ════════════════════════════════════════════════════════════════
+// RENDER CARD (usa template literals – zero problemi di escaping)
+// ════════════════════════════════════════════════════════════════
+function renderCard(room) {
+    const el = document.getElementById(CARD_IDS[room.room]);
+    if (!el) return;
+    const st     = ST[room.type] || ST.error;
+    const reveal = !isLocked;
+    const name   = reveal ? (room.name  || '') : maskName(room.name);
+    const phone  = reveal ? (room.phone || '') : (room.phone ? '*** *** ****' : '');
+    const notes  = reveal ? (room.notes || '') : '';
+    el.style.backgroundColor  = st.bg;
+    el.style.borderLeftColor  = st.color;
+    el.innerHTML = buildCard(room, st, name, phone, notes, reveal);
+}
+
+function buildCard(r, st, name, phone, notes, reveal) {
+    const lockOv = !reveal ? `
+        <div class="lock-overlay">
+            <i class="fa-solid fa-lock text-4xl text-amber-400"></i>
+            <span class="text-xs text-amber-400/70 uppercase tracking-widest font-bold">Dati Protetti</span>
+        </div>` : '';
+
+    const hdr = `
+        <div class="px-4 py-3 flex items-center justify-between shrink-0"
+             style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
+            <span class="font-bold text-slate-200 text-base">${r.room}</span>
+            <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
+                  style="background:${st.color};">${st.label}</span>
+        </div>`;
+
+    let body = '';
+
+    // ── LIBERA ────────────────────────────────────────────────────
+    if (r.type === 'free') {
+        const nxt = r.nextArrival ? buildNextArrival(r.nextArrival, reveal, st.color, 'Prossimo Arrivo') : `
+            <div class="mt-3 text-xs text-slate-700">Nessun arrivo programmato</div>`;
+        body = `
+            <div class="flex-1 relative flex flex-col">
+                ${lockOv}
+                <div class="flex-1 flex flex-col items-center justify-center p-5">
+                    <i class="fa-solid ${st.icon} text-5xl mb-2" style="color:${st.color};"></i>
+                    <div class="text-2xl font-black uppercase tracking-widest" style="color:${st.color};">Disponibile</div>
+                    ${nxt}
+                </div>
+            </div>`;
+
+    // ── BLOCCATA ──────────────────────────────────────────────────
+    } else if (r.type === 'blocked') {
+        const coHtml = r.checkOut ? `
+            <div class="flex items-center justify-between mt-2">
+                <div>
+                    <div class="text-xs text-slate-600 uppercase tracking-wider mb-1">Check-out</div>
+                    <div class="text-xl font-black" style="color:${st.color};">${r.checkOut}</div>
+                </div>
+                ${r.daysLeft !== null ? `
+                <div class="text-right">
+                    <div class="text-3xl font-black" style="color:${st.color};">${r.daysLeft}</div>
+                    <div class="text-xs text-slate-600">${r.daysLeft === 1 ? 'giorno rimasto' : 'giorni rimasti'}</div>
+                </div>` : ''}
+            </div>` : '';
+        const nxt = r.nextArrival ? buildNextArrival(r.nextArrival, reveal, st.color, 'Prossimo Ospite') : '';
+        body = `
+            <div class="flex-1 relative flex flex-col">
+                ${lockOv}
+                <div class="flex-1 flex flex-col p-5 gap-3">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid ${st.icon} text-3xl shrink-0" style="color:${st.color};"></i>
+                        <div>
+                            <div class="text-lg font-bold" style="color:${st.color};">Ospiti in corso</div>
+                            <div class="text-xs text-slate-600">Prenotazione tramite piattaforma</div>
+                        </div>
+                    </div>
+                    ${coHtml}
+                    ${nxt}
+                </div>
+            </div>`;
+
+    // ── ERRORE ────────────────────────────────────────────────────
+    } else if (r.type === 'error') {
+        body = `
+            <div class="flex-1 flex flex-col items-center justify-center p-5 gap-2">
+                <i class="fa-solid ${st.icon} text-4xl text-red-500"></i>
+                <div class="text-base font-bold text-red-400">Errore Connessione</div>
+                <div class="text-xs text-slate-600 text-center">${escHtml(r.errorMsg || 'Verifica la configurazione')}</div>
+            </div>`;
+
+    // ── OCCUPATA (arrival / departure / occupied / changeover) ────
+    } else {
+        let info = '';
+        if (r.type === 'arrival')    info = `Check-in oggi &rarr; ${r.checkOut}${r.nights ? ' &middot; ' + r.nights + ' notti' : ''}`;
+        if (r.type === 'departure')  info = `Check-out oggi &middot; arrivato il ${r.checkIn}`;
+        if (r.type === 'occupied')   info = `Dal ${r.checkIn} al ${r.checkOut} &middot; ${r.nights} notti`;
+        if (r.type === 'changeover') info = `Partenza: ${r.departingGuest || '?'} &rarr; Arrivo nuovo ospite`;
+
+        const daysRow = (r.daysLeft !== null && r.type !== 'departure') ? `
+            <div class="flex items-center justify-between px-3 py-2 rounded-lg"
+                 style="background:rgba(255,255,255,.04);">
+                <span class="text-xs text-slate-500">Rimangono</span>
+                <span class="font-bold" style="color:${st.color};">
+                    ${r.daysLeft} ${r.daysLeft === 1 ? 'giorno' : 'giorni'}
+                </span>
+            </div>` : '';
+
+        const notesRow = (reveal && notes) ? `
+            <div class="flex items-start gap-2">
+                <i class="fa-solid fa-note-sticky text-slate-600 text-sm w-5 shrink-0 mt-0.5"></i>
+                <span class="text-xs text-slate-500 leading-relaxed">
+                    ${escHtml(notes.substring(0, 200))}${notes.length > 200 ? '...' : ''}
+                </span>
+            </div>` : '';
+
+        const nextRow = (r.nextArrival && r.type !== 'arrival' && r.type !== 'changeover') ? `
+            <div class="mt-auto pt-2" style="border-top:1px solid rgba(255,255,255,.07);">
+                <span class="text-xs text-slate-600">
+                    Prossimo &rarr; ${reveal ? r.nextArrival.name : maskName(r.nextArrival.name)}
+                    &middot; ${r.nextArrival.date}
+                    ${r.nextArrival.nights ? ' (' + r.nextArrival.nights + 'n)' : ''}
+                </span>
+            </div>` : '';
+
+        body = `
+            <div class="flex-1 relative overflow-hidden min-h-0 flex flex-col">
+                ${lockOv}
+                <div class="p-4 flex flex-col gap-2.5 flex-1 min-h-0">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid ${st.icon} text-xl shrink-0" style="color:${st.color};"></i>
+                        <span class="text-sm font-semibold leading-snug" style="color:${st.color};">${info}</span>
+                    </div>
+                    <div style="height:1px;background:rgba(255,255,255,.07);"></div>
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-user text-slate-600 text-sm w-5 shrink-0"></i>
+                        <span class="text-xl font-bold ${reveal ? 'text-white' : 'text-slate-600 font-mono tracking-widest'}">
+                            ${name || 'N/D'}
+                        </span>
+                    </div>
+                    ${phone ? `
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-phone text-slate-600 text-sm w-5 shrink-0"></i>
+                        <span class="text-sm font-mono ${reveal ? 'text-blue-300' : 'text-slate-700'}">${phone}</span>
+                    </div>` : ''}
+                    ${daysRow}
+                    ${notesRow}
+                    ${nextRow}
+                </div>
+            </div>`;
+    }
+
+    return hdr + body;
+}
+
+// Helper: blocco "Prossimo Arrivo / Prossimo Ospite"
+function buildNextArrival(na, reveal, color, label) {
+    const displayName = reveal ? na.name : maskName(na.name);
+    return `
+        <div class="mt-3 pt-3 w-full" style="border-top:1px solid rgba(255,255,255,.08);">
+            <div class="text-xs text-slate-600 uppercase tracking-wider mb-2">${label}</div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm font-bold text-slate-200">${na.date}</div>
+                    <div class="text-xs ${reveal ? 'text-slate-400' : 'text-slate-600 font-mono'}">${displayName}</div>
+                    ${(reveal && na.nights) ? `<div class="text-xs text-slate-600">${na.nights} notti</div>` : ''}
+                </div>
+                <div class="text-right">
+                    <div class="text-3xl font-black" style="color:${color};">${na.daysUntil}</div>
+                    <div class="text-xs text-slate-600">${na.daysUntil === 1 ? 'giorno' : 'giorni'}</div>
+                </div>
+            </div>
+        </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// SETUP CARD (URL non configurato)
+// ════════════════════════════════════════════════════════════════
+function showSetupCard(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.backgroundColor = '#1c1400';
+    el.style.borderLeftColor  = '#f59e0b';
+    el.innerHTML = `
+        <div class="px-4 py-3 flex items-center justify-between shrink-0"
+             style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
+            <span class="font-bold text-slate-200 text-base">Configurazione necessaria</span>
+            <span class="text-amber-950 text-xs font-bold px-2.5 py-1 rounded-full uppercase"
+                  style="background:#f59e0b;">SETUP</span>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center p-5 gap-2 text-center">
+            <i class="fa-solid fa-screwdriver-wrench text-3xl text-amber-500"></i>
+            <div class="text-sm font-bold text-amber-400">Google Apps Script non configurato</div>
+            <div class="text-xs text-slate-600 max-w-xs">
+                Crea lo script e incolla l&#39;URL nel file index.html
+            </div>
+        </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// ALERT NUOVA PRENOTAZIONE
+// ════════════════════════════════════════════════════════════════
+function alertNewBooking(u) {
+    playSound('new');
+    alertData = u;
+    const g = document.getElementById('alert-grad');
+    const glow = document.getElementById('alert-glow');
+    g.style.background    = 'linear-gradient(135deg,#10b981,#059669)';
+    glow.style.background = '#10b981';
+    document.getElementById('alert-icon').className      = 'fa-solid fa-calendar-check text-6xl text-emerald-400 mb-4 fa-bounce';
+    document.getElementById('alert-title').textContent   = 'Nuova Prenotazione!';
+    document.getElementById('alert-subtitle').textContent = u.property || '';
+    document.getElementById('alert-room').textContent    = u.room || '';
+    document.getElementById('alert-info').textContent    = 'Prenotazione appena ricevuta';
+    document.getElementById('alert-guest').textContent   = isLocked ? maskName(u.name) : (u.name || 'Ospite');
+    refreshAlertBtn();
+    showEl('alert-modal');
+}
+
+function alertCancellation(u) {
+    playSound('cancel');
+    alertData = u;
+    document.getElementById('alert-grad').style.background    = 'linear-gradient(135deg,#ef4444,#dc2626)';
+    document.getElementById('alert-glow').style.background    = '#ef4444';
+    document.getElementById('alert-icon').className           = 'fa-solid fa-calendar-xmark text-6xl text-red-400 mb-4 fa-shake';
+    document.getElementById('alert-title').textContent        = 'Prenotazione Cancellata!';
+    document.getElementById('alert-subtitle').textContent     = u.property || '';
+    document.getElementById('alert-room').textContent         = u.room || '';
+    document.getElementById('alert-info').textContent         = 'Prenotazione rimossa dal calendario';
+    document.getElementById('alert-guest').textContent        = isLocked ? maskName(u.name) : (u.name || 'Ospite');
+    refreshAlertBtn();
+    showEl('alert-modal');
+}
+
+function simulate(type) {
+    hideSim();
+    if (type === 'new') {
+        alertNewBooking({ name: 'Mario Verdi', room: 'La Camera di Ester', property: 'A Casa di Gina', uid: '__sim__' });
+    } else {
+        playSound('cancel');
+        alertData = { name: 'Giulia Neri', room: 'Padre Sergio', property: 'Padre Sergio' };
+        document.getElementById('alert-grad').style.background    = 'linear-gradient(135deg,#ef4444,#dc2626)';
+        document.getElementById('alert-glow').style.background    = '#ef4444';
+        document.getElementById('alert-icon').className           = 'fa-solid fa-calendar-xmark text-6xl text-red-400 mb-4 fa-shake';
+        document.getElementById('alert-title').textContent        = 'Prenotazione Cancellata';
+        document.getElementById('alert-subtitle').textContent     = 'Padre Sergio';
+        document.getElementById('alert-room').textContent         = 'Padre Sergio';
+        document.getElementById('alert-info').textContent         = 'Cancellazione rilevata';
+        document.getElementById('alert-guest').textContent        = isLocked ? maskName('Giulia Neri') : 'Giulia Neri';
+        refreshAlertBtn();
+        showEl('alert-modal');
+    }
+}
+
+function onAlertBtn() {
+    if (isLocked) showEl('pin-modal');
+    else { hideEl('alert-modal'); alertData = null; }
+}
+
+function refreshAlertBtn() {
+    const btn = document.getElementById('alert-btn');
+    if (isLocked) {
+        btn.style.cssText = 'background:#d97706;color:#451a03;';
+        btn.innerHTML = '<i class="fa-solid fa-lock"></i> Sblocca per i Dettagli';
+    } else {
+        btn.style.cssText = 'background:#1e293b;color:#94a3b8;border:1px solid #334155;';
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Chiudi Avviso';
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
+// LOCK
+// ════════════════════════════════════════════════════════════════
+function onLockPress(e) { e && e.stopPropagation(); isLocked ? showEl('pin-modal') : setLock(true); }
+function onTouch() { if (!isLocked) resetLockTimer(); }
+
+function setLock(locked) {
+    isLocked = locked;
+    const btn  = document.getElementById('btn-lock');
+    const icon = document.getElementById('ico-lock');
+    const lbl  = document.getElementById('lbl-lock');
+    if (locked) {
+        btn.style.cssText      = 'background:#d97706;color:#451a03;';
+        icon.className         = 'fa-solid fa-lock text-base';
+        lbl.textContent        = 'Sblocca';
+        clearTimeout(lockTimer);
+    } else {
+        btn.style.cssText      = 'background:#059669;color:#022c22;';
+        icon.className         = 'fa-solid fa-unlock text-base';
+        lbl.textContent        = 'Blocca (60s)';
+        resetLockTimer();
+    }
+    if (lastRooms) renderRooms(lastRooms);
+    const am = document.getElementById('alert-modal');
+    if (!am.classList.contains('hidden')) {
+        refreshAlertBtn();
+        if (alertData) {
+            document.getElementById('alert-guest').textContent = locked ? maskName(alertData.name) : (alertData.name || 'Ospite');
+        }
+    }
+}
+
+function resetLockTimer() {
+    clearTimeout(lockTimer);
+    lockTimer = setTimeout(() => setLock(true), 60000);
+}
+
+// ════════════════════════════════════════════════════════════════
+// PIN
+// ════════════════════════════════════════════════════════════════
+function pinKey(n) {
+    if (pinStr.length >= 4) return;
+    pinStr += n;
+    pinRefresh();
+    if (pinStr.length === 4) setTimeout(pinSubmit, 120);
+}
+
+function pinClear() {
+    pinStr = '';
+    document.querySelectorAll('.pin-dot').forEach(d => {
+        d.textContent = '';
+        d.style.borderColor = '#334155';
+        d.style.background  = '#1e293b';
+    });
+    pinRefresh();
+}
+
+function pinRefresh() {
+    const dots = document.querySelectorAll('.pin-dot');
+    const ok   = document.getElementById('pin-ok');
+    dots.forEach((d, i) => {
+        if (i < pinStr.length) {
+            d.textContent       = '*';
+            d.style.borderColor = '#d97706';
+            d.style.background  = 'rgba(217,119,6,.12)';
+        } else {
+            d.textContent       = '';
+            d.style.borderColor = '#334155';
+            d.style.background  = '#1e293b';
+        }
+    });
+    if (pinStr.length === 4) {
+        ok.style.cssText = 'background:#d97706;color:#451a03;';
+    } else {
+        ok.style.cssText = 'background:#0a0f1a;color:#475569;border:1px solid rgba(255,255,255,.05);';
+    }
+}
+
+function pinSubmit() {
+    if (pinStr === PIN_CODE) {
+        setLock(false);
+        pinClose();
+    } else if (pinStr.length === 4) {
+        document.querySelectorAll('.pin-dot').forEach(d => {
+            d.style.borderColor = '#ef4444';
+            d.style.background  = 'rgba(239,68,68,.1)';
+        });
+        setTimeout(pinClear, 700);
+    }
+}
+
+function pinClose() { hideEl('pin-modal'); pinClear(); }
+
+// ════════════════════════════════════════════════════════════════
+// METEO
+// ════════════════════════════════════════════════════════════════
+async function getWeatherBoth() {
+    getWeatherCity(WX_P_LAT, WX_P_LON, 'wx-icon-p', 'wx-temp-p');
+    getWeatherCity(WX_M_LAT, WX_M_LON, 'wx-icon-m', 'wx-temp-m');
+}
+
+async function getWeatherCity(lat, lon, iconId, tempId) {
+    try {
+        const r = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+            `&current=temperature_2m,weather_code&timezone=Europe%2FRome`
+        );
+        const d    = await r.json();
+        const temp = Math.round(d.current.temperature_2m);
+        const w    = wmoInfo(d.current.weather_code);
+        document.getElementById(tempId).textContent = temp + '°';
+        const ic = document.getElementById(iconId);
+        ic.className  = 'fa-solid ' + w.icon + ' text-lg';
+        ic.style.color = w.color;
+    } catch(e) {}
+}
+
+function wmoInfo(c) {
+    if (c === 0)  return { icon: 'fa-sun',                  color: '#fbbf24' };
+    if (c <= 2)   return { icon: 'fa-cloud-sun',            color: '#fbbf24' };
+    if (c === 3)  return { icon: 'fa-cloud',                color: '#94a3b8' };
+    if (c <= 48)  return { icon: 'fa-smog',                 color: '#94a3b8' };
+    if (c <= 55)  return { icon: 'fa-cloud-drizzle',        color: '#60a5fa' };
+    if (c <= 67)  return { icon: 'fa-cloud-rain',           color: '#60a5fa' };
+    if (c <= 77)  return { icon: 'fa-snowflake',            color: '#bae6fd' };
+    if (c <= 82)  return { icon: 'fa-cloud-showers-heavy',  color: '#60a5fa' };
+    if (c <= 99)  return { icon: 'fa-cloud-bolt',           color: '#f59e0b' };
+    return { icon: 'fa-cloud', color: '#94a3b8' };
+}
+
+// ════════════════════════════════════════════════════════════════
+// UI UTILS
+// ════════════════════════════════════════════════════════════════
+function setSyncUI(state, detail) {
+    const dot = document.getElementById('sync-dot');
+    const msg = document.getElementById('sync-msg');
+    const map = {
+        pending: { c: '#f59e0b', t: 'Sincronizzazione...' },
+        ok:      { c: '#10b981', t: 'Aggiornato alle ' + (detail || '') },
+        error:   { c: '#ef4444', t: detail || 'Errore connessione' }
+    };
+    const s = map[state] || map.error;
+    dot.style.background = s.c;
+    dot.style.boxShadow  = '0 0 8px ' + s.c + '90';
+    msg.textContent      = s.t;
+    msg.style.color      = state === 'ok' ? '#64748b' : s.c;
+}
+
+function clockTick() {
+    const now = new Date();
+    document.getElementById('hdr-clock').textContent = fmtTime(now);
+    document.getElementById('hdr-date').textContent  =
+        now.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function maskName(n) {
+    if (!n) return '***';
+    return n.split(' ').map(p => p[0] + '*'.repeat(Math.max(2, p.length - 1))).join(' ');
+}
+
+function escHtml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function fmtTime(d)  { return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }); }
+function showEl(id)  { document.getElementById(id).classList.remove('hidden'); }
+function hideEl(id)  { document.getElementById(id).classList.add('hidden'); }
+function toggleSim(e) { if (e) e.stopPropagation(); document.getElementById('sim-menu').classList.toggle('hidden'); }
+function hideSim()   { hideEl('sim-menu'); }
+
+document.addEventListener('click', e => {
+    const m = document.getElementById('sim-menu');
+    if (!m.classList.contains('hidden') && !m.contains(e.target)) hideSim();
+});
+</script>
+</body>
+</html>
