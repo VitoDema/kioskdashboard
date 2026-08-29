@@ -73,7 +73,7 @@
 </header>
 
 <main class="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
-    <section class="flex flex-col gap-2.5 min-h-0" style="flex:58;">
+    <section class="flex flex-col gap-2 min-h-0" style="flex:58;">
         <div class="flex items-center gap-2 px-1 shrink-0">
             <div class="w-2 h-2 rounded-full" style="background:#10b981;box-shadow:0 0 6px #10b98170;"></div>
             <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest">A Casa di Gina &middot; Polignano a Mare</span>
@@ -82,7 +82,7 @@
         </div>
         <div id="card-ester" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0"
              style="background:#0a0f1a;border-left-color:#475569;">
-            <div class="px-4 py-3 flex items-center justify-between shrink-0"
+            <div class="px-3 py-2 flex items-center justify-between shrink-0"
                  style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
                 <span class="font-bold text-slate-200 text-base">La Camera di Ester</span>
                 <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
@@ -93,7 +93,7 @@
         </div>
         <div id="card-ragazze" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0"
              style="background:#0a0f1a;border-left-color:#475569;">
-            <div class="px-4 py-3 flex items-center justify-between shrink-0"
+            <div class="px-3 py-2 flex items-center justify-between shrink-0"
                  style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
                 <span class="font-bold text-slate-200 text-base">La Camera delle Ragazze</span>
                 <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
@@ -103,7 +103,7 @@
                 <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>
         </div>
     </section>
-    <section class="flex flex-col gap-2.5 min-h-0" style="flex:42;">
+    <section class="flex flex-col gap-2 min-h-0" style="flex:42;">
         <div class="flex items-center gap-2 px-1 shrink-0">
             <div class="w-2 h-2 rounded-full" style="background:#3b82f6;box-shadow:0 0 6px #3b82f670;"></div>
             <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Padre Sergio &middot; Monopoli</span>
@@ -112,7 +112,7 @@
         </div>
         <div id="card-sergio" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0"
              style="background:#0a0f1a;border-left-color:#475569;">
-            <div class="px-4 py-3 flex items-center justify-between shrink-0"
+            <div class="px-3 py-2 flex items-center justify-between shrink-0"
                  style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
                 <span class="font-bold text-slate-200 text-base">Padre Sergio</span>
                 <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
@@ -344,7 +344,7 @@ function buildCard(r,st,name,phone,notes,reveal){
         </div>`:'';
 
     const hdr=`
-        <div class="px-4 py-3 flex items-center justify-between shrink-0"
+        <div class="px-3 py-2 flex items-center justify-between shrink-0"
              style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
             <span class="font-bold text-slate-200 text-base">${r.room}</span>
             <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
@@ -400,7 +400,7 @@ function buildCard(r,st,name,phone,notes,reveal){
         const depName=r.departingGuest||'';
         const arrName=name||'';
         const noNameLabel='<span class="italic text-slate-600 text-xs">nome non disponibile (Airbnb)</span>';
-        body=`<div class="flex-1 relative overflow-hidden min-h-0 flex flex-col">${lockOv}
+        body=`<div class="flex-1 relative min-h-0 flex flex-col" style="overflow:hidden;">${lockOv}
             <div class="p-4 flex flex-col gap-3 flex-1 min-h-0">
                 <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(255,255,255,.07);">
                     <!-- PARTENZA -->
@@ -479,8 +479,8 @@ function buildCard(r,st,name,phone,notes,reveal){
                 </span>
             </div>`:'';
 
-        body=`<div class="flex-1 relative overflow-hidden min-h-0 flex flex-col">${lockOv}
-            <div class="p-4 flex flex-col gap-2.5 flex-1 min-h-0">
+        body=`<div class="flex-1 relative min-h-0 flex flex-col" style="overflow:hidden;">${lockOv}
+            <div class="p-3 flex flex-col gap-2 flex-1" style="overflow-y:auto;-webkit-overflow-scrolling:touch;">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid ${st.icon} text-xl shrink-0" style="color:${st.color};"></i>
                     <span class="text-sm font-semibold leading-snug" style="color:${st.color};">${infoText}</span>
@@ -520,7 +520,7 @@ function showSetupCard(id){
     const el=document.getElementById(id);if(!el)return;
     el.style.backgroundColor='#1c1400';el.style.borderLeftColor='#f59e0b';
     el.innerHTML=`
-        <div class="px-4 py-3 flex items-center justify-between shrink-0"
+        <div class="px-3 py-2 flex items-center justify-between shrink-0"
              style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
             <span class="font-bold text-slate-200 text-base">Configurazione necessaria</span>
             <span class="text-amber-950 text-xs font-bold px-2.5 py-1 rounded-full uppercase" style="background:#f59e0b;">SETUP</span>
