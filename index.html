@@ -20,22 +20,23 @@
         .room-card{border:1px solid rgba(255,255,255,.04);border-left-width:3px;
                    transition:background-color .4s ease,border-left-color .4s ease}
         #pin-modal{z-index:80}#alert-modal{z-index:70}
-        .lock-overlay{position:absolute;inset:0;display:flex;flex-direction:column;
+        .lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;
+                      display:flex;flex-direction:column;
                       align-items:center;justify-content:center;gap:8px;
-                      background:rgba(3,7,18,.82);backdrop-filter:blur(5px);z-index:5;}
+                      background:rgba(3,7,18,.88);z-index:5;}
     </style>
 </head>
 <body class="flex flex-col bg-slate-950 text-slate-100" onclick="onTouch()">
 
-<header class="flex items-center justify-between px-5 shrink-0 bg-slate-900 border-b border-white/5 shadow-xl" style="height:78px;">
+<header class="flex items-center justify-between px-5 shrink-0 bg-slate-900 border-b border-white/5 shadow-xl" style="min-height:64px;padding-top:8px;padding-bottom:8px;">
     <div class="flex items-center gap-3">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center shadow-lg shrink-0"
              style="background:linear-gradient(135deg,#059669,#047857);">
             <i class="fa-solid fa-house-chimney text-white text-xl"></i>
         </div>
         <div>
-            <div class="text-xl font-black text-white leading-none">A Casa di Gina</div>
-            <div class="text-xs text-emerald-400 uppercase tracking-widest font-semibold mt-0.5">
+            <div class="font-black text-white leading-none" style="font-size:clamp(13px,3vw,20px);">A Casa di Gina</div>
+            <div class="text-emerald-400 uppercase tracking-widest font-semibold mt-0.5" style="font-size:clamp(8px,1.5vw,11px);">
                 &amp; Padre Sergio &middot; Hub Operativo
             </div>
         </div>
@@ -60,7 +61,7 @@
         </div>
         <div class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/5 bg-slate-950">
             <i class="fa-regular fa-clock text-emerald-500 text-sm"></i>
-            <span id="hdr-clock" class="text-3xl font-mono font-black text-white tracking-tighter">--:--</span>
+            <span id="hdr-clock" class="font-mono font-black text-white tracking-tighter" style="font-size:clamp(20px,4vw,30px);">--:--</span>
         </div>
         <button id="btn-lock" onclick="onLockPress(event)"
                 class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition-all"
@@ -241,6 +242,21 @@ document.addEventListener('click', initAudio, {once:true});
 clockTick(); setInterval(clockTick, 1000);
 getWeatherBoth(); setInterval(getWeatherBoth, 30*60*1000);
 syncData();
+// ── SCREEN WAKE LOCK (impedisce lo spegnimento dello schermo) ─────
+let wakeLock = null;
+async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        console.log('[WakeLock] Attivo');
+        wakeLock.addEventListener('release', () => console.log('[WakeLock] Rilasciato'));
+    } catch(e) { console.warn('[WakeLock] Non disponibile:', e.message); }
+}
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestWakeLock();
+});
+requestWakeLock();
+
 
 // ── AUDIO ─────────────────────────────────────────────────────────
 function initAudio(){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}
