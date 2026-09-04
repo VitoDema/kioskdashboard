@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Calendario &ndash; A Casa di Gina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        html,body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+                  -webkit-tap-highlight-color:transparent}
+        ::-webkit-scrollbar{width:5px}
+        ::-webkit-scrollbar-track{background:#0f172a}
+        ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+
+        /* GRIGLIA CALENDARIO */
+        .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:rgba(255,255,255,.07)}
+        .cal-cell{background:#0a0f1a}
+        .cal-day{position:relative;padding:4px 4px 2px;cursor:pointer;transition:background .12s;
+                 user-select:none;-webkit-user-select:none;min-height:70px}
+        .cal-day:active{background:rgba(255,255,255,.06)}
+        .cal-day.today{background:rgba(16,185,129,.08)}
+        .cal-day.has-event{cursor:pointer}
+
+        /* BARRE OCCUPAZIONE */
+        .occ-bar{position:absolute;height:14px;left:0;right:0;display:flex;align-items:center;
+                 font-size:9px;font-weight:700;white-space:nowrap;overflow:hidden;padding:0 4px}
+        /* Indicatori arrivo/partenza */
+        .arr-mark{position:absolute;left:0;width:4px;pointer-events:none;border-radius:1px}
+        .dep-mark{position:absolute;left:0;width:4px;pointer-events:none;border-radius:1px}
+
+        /* DESKTOP: barre con testo */
+        @media(min-width:640px){
+            .cal-day{min-height:80px;padding:5px 5px 3px}
+            .occ-bar{height:16px;font-size:10px;padding:0 5px}
+        }
+        @media(min-width:1024px){
+            .cal-day{min-height:88px}
+            .occ-bar{height:18px;font-size:10px}
+        }
+
+        /* BOTTOM SHEET (mobile day detail) */
+        @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        #day-sheet{animation:slideUp .22s ease-out}
+        #sheet-overlay{animation:fadeIn .18s ease}
+
+        /* TOOLTIP desktop */
+        @media(min-width:640px){
+            .tip{display:none;position:absolute;z-index:99;background:#1e293b;
+                 border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;
+                 min-width:200px;max-width:260px;box-shadow:0 8px 24px rgba(0,0,0,.7);
+                 pointer-events:none;font-size:11px;line-height:1.5}
+            .cal-day:hover .tip{display:block}
+            .cal-day:hover{background:rgba(255,255,255,.02)}
+        }
+        /* Su mobile il tooltip è sempre nascosto (si usa il bottom sheet) */
+        @media(max-width:639px){.tip{display:none!important}}
+
+        .leg-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100" style="min-height:100vh;">
+
+<!-- HEADER -->
+<header class="px-4 py-3 bg-slate-900 border-b border-white/5 shadow-lg sticky top-0" style="z-index:40;">
+    <!-- Riga 1: logo + aggiorna -->
+    <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                 style="background:linear-gradient(135deg,#059669,#047857);">
+                <i class="fa-solid fa-calendar-days text-white text-xs"></i>
+            </div>
+            <div>
+                <div class="font-black text-white leading-none" style="font-size:clamp(12px,3.5vw,17px);">A Casa di Gina</div>
+                <div class="text-emerald-400 uppercase tracking-widest font-semibold" style="font-size:clamp(8px,2vw,10px);">Calendario Prenotazioni</div>
+            </div>
+        </div>
+        <button onclick="loadData()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold border border-white/5 transition-colors" style="font-size:12px;">
+            <i id="ico-refresh" class="fa-solid fa-rotate-right text-xs"></i>
+            <span class="hidden sm:inline">Aggiorna</span>
+        </button>
+    </div>
+    <!-- Riga 2: navigazione mese -->
+    <div class="flex items-center justify-center gap-4">
+        <button onclick="prevMonth()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors">
+            <i class="fa-solid fa-chevron-left text-slate-300 text-sm"></i>
+        </button>
+        <div class="text-center" style="min-width:155px;">
+            <div id="month-label" class="font-black text-white capitalize" style="font-size:clamp(15px,4vw,20px);"></div>
+        </div>
+        <button onclick="nextMonth()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors">
+            <i class="fa-solid fa-chevron-right text-slate-300 text-sm"></i>
+        </button>
+        <button onclick="goToday()" class="px-3 py-1.5 rounded-lg font-bold border transition-colors" style="font-size:12px;background:rgba(16,185,129,.1);color:#34d399;border-color:rgba(16,185,129,.2);">Oggi</button>
+    </div>
+</header>
+
+<!-- LEGENDA + STATUS -->
+<div class="flex items-center justify-between px-4 py-2 border-b border-white/5" style="background:#070c16;flex-wrap:wrap;gap:6px;">
+    <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex items-center gap-1.5"><div class="leg-dot" style="background:#818cf8;"></div><span class="text-slate-300" style="font-size:11px;font-weight:600;">Camera di Ester</span></div>
+        <div class="flex items-center gap-1.5"><div class="leg-dot" style="background:#34d399;"></div><span class="text-slate-300" style="font-size:11px;font-weight:600;">Camera delle Ragazze</span></div>
+        <div class="hidden sm:flex items-center gap-3 ml-2 pl-2 border-l border-white/10">
+            <div class="flex items-center gap-1">
+                <div style="width:12px;height:8px;background:rgba(16,185,129,.25);border-left:3px solid #10b981;border-radius:1px;"></div>
+                <span style="font-size:10px;color:#64748b;">Arrivo</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <div style="width:12px;height:8px;background:rgba(239,68,68,.2);border-left:3px solid #ef4444;border-radius:1px;"></div>
+                <span style="font-size:10px;color:#64748b;">Partenza</span>
+            </div>
+        </div>
+    </div>
+    <div class="flex items-center gap-1.5">
+        <div id="status-dot" class="w-2 h-2 rounded-full" style="background:#475569;"></div>
+        <span id="status-msg" class="text-slate-600" style="font-size:10px;">Caricamento...</span>
+    </div>
+</div>
+
+<!-- RIEPILOGO -->
+<div id="summary-bar" style="display:none;background:#05080f;" class="px-4 py-1.5 border-b border-white/5">
+    <div class="flex items-center gap-4 flex-wrap">
+        <span class="text-slate-600 uppercase tracking-wider" style="font-size:9px;">Questo mese:</span>
+        <span id="sum-ester"   style="font-size:10px;font-weight:700;color:#818cf8;"></span>
+        <span id="sum-ragazze" style="font-size:10px;font-weight:700;color:#34d399;"></span>
+    </div>
+</div>
+
+<!-- CALENDARIO -->
+<div class="p-2 sm:p-4" style="max-width:900px;margin:0 auto;">
+    <!-- Intestazioni giorni -->
+    <div class="cal-grid rounded-t-xl overflow-hidden mb-px">
+        <div class="cal-cell py-1.5 text-center font-bold text-slate-500 uppercase tracking-widest" style="font-size:10px;">L</div>
+        <div class="cal-cell py-1.5 text-center font-bold text-slate-500 uppercase tracking-widest" style="font-size:10px;">M</div>
+        <div class="cal-cell py-1.5 text-center font-bold text-slate-500 uppercase tracking-widest" style="font-size:10px;">M</div>
+        <div class="cal-cell py-1.5 text-center font-bold text-slate-500 uppercase tracking-widest" style="font-size:10px;">G</div>
+        <div class="cal-cell py-1.5 text-center font-bold text-slate-500 uppercase tracking-widest" style="font-size:10px;">V</div>
+        <div class="cal-cell py-1.5 text-center font-bold uppercase tracking-widest" style="font-size:10px;color:#f87171;">S</div>
+        <div class="cal-cell py-1.5 text-center font-bold uppercase tracking-widest" style="font-size:10px;color:#f87171;">D</div>
+    </div>
+    <!-- Griglia -->
+    <div id="cal-grid" class="cal-grid rounded-b-xl overflow-hidden"></div>
+</div>
+
+<!-- BOTTOM SHEET: dettaglio giorno (mobile + desktop click) -->
+<div id="sheet-overlay" onclick="closeSheet()"
+     style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);z-index:70;"></div>
+<div id="day-sheet"
+     style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:80;background:#0f172a;
+            border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,.1);
+            max-height:80vh;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);">
+    <!-- Handle -->
+    <div class="flex justify-center pt-3 pb-1">
+        <div style="width:40px;height:4px;background:#334155;border-radius:2px;"></div>
+    </div>
+    <div class="px-5 pb-2 flex items-center justify-between">
+        <div id="sheet-date" class="font-black text-white capitalize" style="font-size:16px;"></div>
+        <button onclick="closeSheet()" class="text-slate-500 hover:text-white text-xl leading-none">&times;</button>
+    </div>
+    <div id="sheet-content" class="px-4 pb-6"></div>
+</div>
+
+<!-- DETAIL MODAL (click su singola prenotazione) -->
+<div id="detail-modal" onclick="closeDetail()"
+     style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:90;align-items:center;justify-content:center;padding:16px;">
+    <div onclick="event.stopPropagation()"
+         style="background:#0f172a;border:1px solid rgba(255,255,255,.08);border-radius:16px;width:100%;max-width:400px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.7);">
+        <div id="detail-header" class="px-5 py-4" style="border-bottom:1px solid rgba(255,255,255,.06);">
+            <div class="flex items-center justify-between">
+                <div id="d-room" class="font-bold text-white" style="font-size:15px;"></div>
+                <button onclick="closeDetail()" class="text-slate-500 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            <span id="d-badge" class="inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide"></span>
+        </div>
+        <div class="px-5 py-4">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <div class="text-xs text-slate-600 uppercase tracking-wider mb-1">Check-in</div>
+                    <div id="d-ci" class="font-black text-white" style="font-size:22px;"></div>
+                </div>
+                <div class="text-slate-600 text-lg">&rarr;</div>
+                <div>
+                    <div class="text-xs text-slate-600 uppercase tracking-wider mb-1">Check-out</div>
+                    <div id="d-co" class="font-black text-white" style="font-size:22px;"></div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-600 uppercase tracking-wider mb-1">Notti</div>
+                    <div id="d-n" class="font-black" style="font-size:28px;color:#818cf8;"></div>
+                </div>
+            </div>
+            <div style="height:1px;background:rgba(255,255,255,.06);margin-bottom:12px;"></div>
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-slate-600 uppercase tracking-wider">Ospite</span>
+                <span id="d-guest" class="font-bold text-white" style="font-size:16px;"></span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-xs text-slate-600 uppercase tracking-wider">Piattaforma</span>
+                <span id="d-src" class="text-sm font-semibold text-slate-400"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbyLEM4o93Mj77IsPlCqj3DP8CDp65ejAAtP1KDFOz92GxYfwvZ1Kw_G8A5cKwoH2z0q/exec";
+
+const ROOM_CFG = {
+    'La Camera di Ester':      {id:'ester',   color:'#818cf8',bg:'#1e1b4b',border:'#818cf8',textColor:'#c7d2fe',row:0},
+    'La Camera delle Ragazze': {id:'ragazze', color:'#34d399',bg:'#022c22',border:'#34d399',textColor:'#6ee7b7',row:1}
+};
+
+let vYear, vMonth, bookings=[], isMobile=window.innerWidth<640;
+const n=new Date(); vYear=n.getFullYear(); vMonth=n.getMonth();
+
+window.addEventListener('resize',()=>{isMobile=window.innerWidth<640;});
+loadData();
+
+async function loadData(){
+    setStatus('loading','Caricamento...');
+    document.getElementById('ico-refresh').className='fa-solid fa-rotate-right fa-spin';
+    try{
+        let res=await fetch(API_URL);
+        if(res.status===404){await new Promise(r=>setTimeout(r,5000));res=await fetch(API_URL);}
+        if(!res.ok)throw new Error('HTTP '+res.status);
+        const raw=await res.text();
+        if(raw.trim().startsWith('<'))throw new Error('Ridistribuisci Code.gs con accesso a chiunque');
+        const data=JSON.parse(raw);
+        if(!data.calendarBookings?.length)throw new Error('Nessuna prenotazione. Ridistribuisci Code.gs.');
+        bookings=(data.calendarBookings||[]).map(b=>({
+            ...b, checkIn:parseD(b.checkIn), checkOut:parseD(b.checkOut),
+            cfg:ROOM_CFG[b.room]
+        })).filter(b=>b.cfg&&b.checkIn&&b.checkOut);
+        setStatus('ok','Agg. '+now2());
+    }catch(e){console.error(e);setStatus('error',e.message);}
+    document.getElementById('ico-refresh').className='fa-solid fa-rotate-right';
+    render(); renderSummary();
+}
+
+function parseD(s){
+    if(!s)return null;
+    const [y,m,d]=s.split('-').map(Number);
+    const dt=new Date(y,m-1,d); dt.setHours(0,0,0,0); return dt;
+}
+
+function render(){
+    const grid=document.getElementById('cal-grid');
+    const first=new Date(vYear,vMonth,1),last=new Date(vYear,vMonth+1,0);
+    const today=new Date(); today.setHours(0,0,0,0);
+    document.getElementById('month-label').textContent=
+        first.toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+
+    let dow=first.getDay()-1; if(dow<0)dow=6;
+    const total=Math.ceil((dow+last.getDate())/7)*7;
+    const cells=[];
+
+    for(let i=0;i<total;i++){
+        const dayNum=i-dow+1;
+        if(dayNum<1||dayNum>last.getDate()){
+            cells.push('<div class="cal-cell" style="min-height:70px;"></div>'); continue;
+        }
+        const date=new Date(vYear,vMonth,dayNum); date.setHours(0,0,0,0);
+        const isToday=sameDay(date,today);
+        const isWknd=date.getDay()===0||date.getDay()===6;
+        const col=i%7;
+
+        const bDay=bookings.filter(b=>b.checkIn<=date&&b.checkOut>date);
+        const bDep=bookings.filter(b=>sameDay(b.checkOut,date)&&!bDay.includes(b));
+        const hasAny=bDay.length||bDep.length;
+
+        let barsHtml='', tipHtml='';
+
+        for(const b of bDay){
+            const cfg=b.cfg;
+            const isFirst=sameDay(b.checkIn,date)||dayNum===1;
+            const nextDay=new Date(date.getTime()+86400000);
+            const isLast=nextDay>=b.checkOut||dayNum===last.getDate();
+            const isArr=sameDay(b.checkIn,date);
+            const topPx=cfg.row===0?22:38; // posizione verticale (ridotta per mobile)
+            const ml=isFirst?'4px':'0', mr=isLast?'4px':'0';
+            const radL=isFirst?'3px':'0', radR=isLast?'3px':'0';
+            // Su mobile non mostra testo nelle barre (troppo stretto)
+            const label=isArr?(b.name||(b.source==='Airbnb'?'Airbnb':'Holidu')):'';
+            const bidx=bookings.indexOf(b);
+
+            barsHtml+=`<div class="occ-bar" data-idx="${bidx}"
+                style="top:${topPx}px;left:${ml};right:${mr};
+                       border-radius:${radL} ${radR} ${radR} ${radL};
+                       background:${cfg.bg};
+                       border-top:1px solid ${cfg.border};border-bottom:1px solid ${cfg.border};
+                       ${isFirst?'border-left:1px solid '+cfg.border+';':''}
+                       ${isLast?'border-right:1px solid '+cfg.border+';':''}
+                       color:${cfg.textColor};">${label}</div>`;
+
+            if(isArr){
+                barsHtml+=`<div style="position:absolute;top:${topPx}px;left:0;width:4px;height:14px;
+                    background:rgba(16,185,129,.5);border-left:3px solid #10b981;border-radius:1px;pointer-events:none;"></div>`;
+            }
+
+            // Tooltip desktop
+            tipHtml+=`<div style="margin-bottom:6px;${bDay.indexOf(b)<bDay.length-1?'padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.06);':''}">
+                <div style="font-size:9px;font-weight:700;color:${cfg.color};margin-bottom:2px;">${b.room}</div>
+                <div style="font-size:11px;color:#f1f5f9;font-weight:600;">${esc(b.name)||'Airbnb (N/D)'}</div>
+                <div style="font-size:10px;color:#64748b;">${fmt(b.checkIn)} &rarr; ${fmt(b.checkOut)} &middot; ${b.nights}n &middot; ${b.source}</div>
+                ${isArr?'<div style="font-size:10px;color:#10b981;">\u2708 Arrivo oggi</div>':''}
+            </div>`;
+        }
+        for(const b of bDep){
+            const cfg=b.cfg;
+            const topPx=cfg.row===0?22:38;
+            barsHtml+=`<div style="position:absolute;top:${topPx}px;left:0;width:4px;height:14px;
+                background:rgba(239,68,68,.4);border-left:3px solid #ef4444;border-radius:1px;pointer-events:none;"></div>`;
+            tipHtml+=`<div><div style="font-size:9px;font-weight:700;color:${cfg.color};margin-bottom:1px;">${b.room}</div>
+                <div style="font-size:10px;color:#f87171;">\u2708 Partenza &middot; ${esc(b.name)||'Airbnb'}</div></div>`;
+        }
+
+        // Tooltip desktop
+        const tipTop=i>=total-14?'auto':'76px';
+        const tipBot=i>=total-14?'76px':'auto';
+        const tip=tipHtml?`<div class="tip"
+            style="top:${tipTop};bottom:${tipBot};${col>=5?'right:0':'left:0'};z-index:99;">${tipHtml}</div>`:'';
+
+        // Pallino "ha eventi" — utile su mobile dove le barre sono piccole
+        const dotHtml=hasAny?`<div style="position:absolute;bottom:3px;right:4px;display:flex;gap:2px;">
+            ${bDay.some(b=>b.cfg.row===0)||bDep.some(b=>b.cfg.row===0)?'<div style="width:5px;height:5px;border-radius:50%;background:#818cf8;"></div>':''}
+            ${bDay.some(b=>b.cfg.row===1)||bDep.some(b=>b.cfg.row===1)?'<div style="width:5px;height:5px;border-radius:50%;background:#34d399;"></div>':''}
+        </div>`:'';
+
+        const dayColor=isToday?'#10b981':(isWknd?'#f87171':'#e2e8f0');
+        const dateStr=date.toISOString().split('T')[0];
+
+        cells.push(`<div class="cal-cell cal-day${isToday?' today':''}${hasAny?' has-event':''}"
+            onclick="onDayClick('${dateStr}')" data-date="${dateStr}">
+            <span style="font-size:12px;font-weight:${isToday?900:600};color:${dayColor};">${dayNum}</span>
+            ${barsHtml}${dotHtml}${tip}
+        </div>`);
+    }
+    grid.innerHTML=cells.join('');
+}
+
+function onDayClick(dateStr){
+    const date=parseD(dateStr); if(!date)return;
+    const bDay=bookings.filter(b=>b.checkIn<=date&&b.checkOut>date);
+    const bDep=bookings.filter(b=>sameDay(b.checkOut,date)&&!bDay.includes(b));
+    if(!bDay.length&&!bDep.length)return;
+
+    // Popola bottom sheet
+    const sheetDate=document.getElementById('sheet-date');
+    sheetDate.textContent=date.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+
+    let html='';
+    for(const b of bDay){
+        const cfg=b.cfg;
+        const isArr=sameDay(b.checkIn,date);
+        const isDep=sameDay(new Date(b.checkOut.getTime()-86400000),date); // ultimo notte
+        const bidx=bookings.indexOf(b);
+        html+=`<div onclick="openDetail(${bidx})"
+            style="background:${cfg.bg};border:1px solid ${cfg.border};border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer;">
+            <div style="font-size:10px;font-weight:700;color:${cfg.color};letter-spacing:.05em;margin-bottom:4px;">${cfg.id==='ester'?'Camera di Ester':'Camera delle Ragazze'}</div>
+            <div style="font-size:16px;font-weight:800;color:#f1f5f9;margin-bottom:4px;">${esc(b.name)||'<span style="font-style:italic;color:#475569;">Airbnb (nome N/D)</span>'}</div>
+            <div style="font-size:12px;color:#64748b;">${fmt(b.checkIn)} &rarr; ${fmt(b.checkOut)} &middot; ${b.nights} notti &middot; ${b.source}</div>
+            ${isArr?'<div style="font-size:11px;color:#10b981;margin-top:4px;"><i class="fa-solid fa-plane-arrival" style="font-size:10px;margin-right:4px;"></i>Arrivo oggi</div>':''}
+            ${isDep?'<div style="font-size:11px;color:#fb923c;margin-top:4px;"><i class="fa-solid fa-moon" style="font-size:10px;margin-right:4px;"></i>Ultima notte</div>':''}
+            <div style="font-size:10px;color:${cfg.color};margin-top:6px;opacity:.6;"><i class="fa-solid fa-chevron-right" style="font-size:9px;"></i> Tocca per dettagli</div>
+        </div>`;
+    }
+    for(const b of bDep){
+        const cfg=b.cfg;
+        html+=`<div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+            <div style="font-size:10px;font-weight:700;color:${cfg.color};letter-spacing:.05em;margin-bottom:4px;">${cfg.id==='ester'?'Camera di Ester':'Camera delle Ragazze'}</div>
+            <div style="font-size:16px;font-weight:800;color:#f1f5f9;margin-bottom:4px;">${esc(b.name)||'Airbnb'}</div>
+            <div style="font-size:11px;color:#f87171;margin-top:2px;"><i class="fa-solid fa-plane-departure" style="font-size:10px;margin-right:4px;"></i>Partenza oggi</div>
+        </div>`;
+    }
+
+    document.getElementById('sheet-content').innerHTML=html;
+    document.getElementById('sheet-overlay').style.display='block';
+    document.getElementById('day-sheet').style.display='block';
+}
+function closeSheet(){
+    document.getElementById('sheet-overlay').style.display='none';
+    document.getElementById('day-sheet').style.display='none';
+}
+
+function openDetail(idx){
+    const b=bookings[idx];if(!b)return;
+    closeSheet();
+    const cfg=b.cfg;
+    document.getElementById('d-room').textContent=b.room;
+    document.getElementById('detail-header').style.background=cfg.bg+'90';
+    const badge=document.getElementById('d-badge');
+    badge.textContent=b.source;
+    badge.style.cssText=`background:${cfg.bg};border:1px solid ${cfg.border};color:${cfg.textColor};`;
+    document.getElementById('d-ci').textContent=fmt(b.checkIn);
+    document.getElementById('d-co').textContent=fmt(b.checkOut);
+    document.getElementById('d-n').textContent=b.nights;
+    document.getElementById('d-n').style.color=cfg.color;
+    document.getElementById('d-guest').textContent=b.name||'Airbnb (nome non disponibile)';
+    document.getElementById('d-src').textContent=b.source;
+    document.getElementById('detail-modal').style.display='flex';
+}
+function closeDetail(){document.getElementById('detail-modal').style.display='none';}
+
+function renderSummary(){
+    const first=new Date(vYear,vMonth,1),last=new Date(vYear,vMonth+1,0);
+    const defs=[{id:'ester',key:'La Camera di Ester'},{id:'ragazze',key:'La Camera delle Ragazze'}];
+    for(const r of defs){
+        let occ=0;const seen=new Set();
+        for(let d=new Date(first);d<=last;d.setDate(d.getDate()+1)){
+            const date=new Date(d);date.setHours(0,0,0,0);
+            const bs=bookings.filter(b=>b.room===r.key&&b.checkIn<=date&&b.checkOut>date);
+            if(bs.length){occ++;bs.forEach(b=>{if(b.uid)seen.add(b.uid);});}
+        }
+        const tot=last.getDate(),pct=Math.round(occ/tot*100);
+        document.getElementById('sum-'+r.id).textContent=
+            `${r.id==='ester'?'Ester':'Ragazze'}: ${occ}/${tot}gg (${pct}%) \u00b7 ${seen.size} prenotazioni`;
+    }
+    document.getElementById('summary-bar').style.display='block';
+}
+
+function prevMonth(){vMonth--;if(vMonth<0){vMonth=11;vYear--;}render();renderSummary();}
+function nextMonth(){vMonth++;if(vMonth>11){vMonth=0;vYear++;}render();renderSummary();}
+function goToday(){const n=new Date();vYear=n.getFullYear();vMonth=n.getMonth();render();renderSummary();}
+
+function sameDay(a,b){return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
+function fmt(d){if(!d)return'--';return d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function now2(){return new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});}
+function esc(s){return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
+function setStatus(s,t){
+    const dot=document.getElementById('status-dot'),msg=document.getElementById('status-msg');
+    const c={loading:'#f59e0b',ok:'#10b981',error:'#ef4444'}[s]||'#475569';
+    dot.style.background=c;dot.style.boxShadow='0 0 5px '+c+'80';
+    msg.textContent=t;msg.style.color=s==='ok'?'#64748b':c;
+}
+</script>
+</body>
+</html>
