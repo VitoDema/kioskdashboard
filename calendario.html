@@ -289,7 +289,7 @@ function render(){
             const isLast=nextDay>=b.checkOut||dayNum===last.getDate();
             const isArr=sameDay(b.checkIn,date);
             const topPx=cfg.row===0?22:38; // posizione verticale (ridotta per mobile)
-            const ml=isFirst?'4px':'0', mr=isLast?'4px':'0';
+            const ml=isFirst?'4px':'-1px', mr=isLast?'4px':'-1px';
             const radL=isFirst?'3px':'0', radR=isLast?'3px':'0';
             // Su mobile non mostra testo nelle barre (troppo stretto)
             const label=isArr?(b.name||(b.source==='Airbnb'?'Airbnb':'Holidu')):'';
