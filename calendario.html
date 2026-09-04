@@ -339,7 +339,8 @@ function render(){
         </div>`:'';
 
         const dayColor=isToday?'#10b981':(isWknd?'#f87171':'#e2e8f0');
-        const dateStr=date.toISOString().split('T')[0];
+        // Fix fuso orario: usa componenti locali invece di toISOString() (che usa UTC)
+        const dateStr=vYear+'-'+String(vMonth+1).padStart(2,'0')+'-'+String(dayNum).padStart(2,'0');
 
         cells.push(`<div class="cal-cell cal-day${isToday?' today':''}${hasAny?' has-event':''}"
             onclick="onDayClick('${dateStr}')" data-date="${dateStr}">
