@@ -61,6 +61,15 @@
         @media(max-width:639px){.tip{display:none!important}}
 
         .leg-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+        /* PIN screen */
+        #pin-screen{position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;
+                    background:#020617;display:flex;align-items:center;justify-content:center;
+                    flex-direction:column;padding:24px;}
+        @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+        .pin-shake{animation:shake .4s ease}
+        .pin-dot-cal{width:14px;height:14px;border-radius:50%;background:#1e293b;border:2px solid #334155;
+                     transition:all .15s}
+        .pin-dot-cal.filled{background:#d97706;border-color:#d97706;}
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100" style="min-height:100vh;">
@@ -436,5 +445,115 @@ function setStatus(s,t){
     msg.textContent=t;msg.style.color=s==='ok'?'#64748b':c;
 }
 </script>
+
+<!-- PIN SCREEN -->
+<div id="pin-screen">
+    <div style="width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:0;">
+        <!-- Logo -->
+        <div style="width:60px;height:60px;border-radius:18px;background:linear-gradient(135deg,#059669,#047857);
+                    display:flex;align-items:center;justify-content:center;margin-bottom:20px;
+                    box-shadow:0 8px 24px rgba(5,150,105,.3);">
+            <i class="fa-solid fa-calendar-days" style="color:#fff;font-size:22px;"></i>
+        </div>
+        <h1 style="font-size:20px;font-weight:900;color:#fff;margin-bottom:4px;">A Casa di Gina</h1>
+        <p style="font-size:12px;color:#475569;margin-bottom:28px;text-align:center;">Calendario prenotazioni &mdash; Accesso protetto</p>
+
+        <!-- Dots PIN -->
+        <div id="pin-dots-cal" style="display:flex;gap:12px;margin-bottom:28px;">
+            <div class="pin-dot-cal"></div>
+            <div class="pin-dot-cal"></div>
+            <div class="pin-dot-cal"></div>
+            <div class="pin-dot-cal"></div>
+        </div>
+
+        <!-- Messaggio errore -->
+        <div id="pin-error-cal" style="height:18px;margin-bottom:12px;">
+            <span style="font-size:12px;color:#ef4444;font-weight:600;display:none;" id="pin-err-txt">PIN errato, riprova</span>
+        </div>
+
+        <!-- Tastiera numerica -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:240px;">
+            <button onclick="calPinKey(1)" class="pin-btn-cal">1</button>
+            <button onclick="calPinKey(2)" class="pin-btn-cal">2</button>
+            <button onclick="calPinKey(3)" class="pin-btn-cal">3</button>
+            <button onclick="calPinKey(4)" class="pin-btn-cal">4</button>
+            <button onclick="calPinKey(5)" class="pin-btn-cal">5</button>
+            <button onclick="calPinKey(6)" class="pin-btn-cal">6</button>
+            <button onclick="calPinKey(7)" class="pin-btn-cal">7</button>
+            <button onclick="calPinKey(8)" class="pin-btn-cal">8</button>
+            <button onclick="calPinKey(9)" class="pin-btn-cal">9</button>
+            <button onclick="calPinClear()" style="background:#0f172a;color:#64748b;font-size:12px;font-weight:700;
+                    border:1px solid rgba(255,255,255,.06);border-radius:12px;height:52px;cursor:pointer;
+                    transition:background .1s;" onmousedown="this.style.background='#1e293b'" onmouseup="this.style.background='#0f172a'">CANC</button>
+            <button onclick="calPinKey(0)" class="pin-btn-cal">0</button>
+            <button onclick="calPinSubmit()" id="pin-ok-cal" style="background:#0f172a;color:#475569;font-size:12px;font-weight:700;
+                    border:1px solid rgba(255,255,255,.06);border-radius:12px;height:52px;cursor:pointer;transition:all .15s;">OK</button>
+        </div>
+    </div>
+</div>
+<style>
+.pin-btn-cal{width:100%;height:52px;background:#1e293b;color:#fff;font-size:22px;font-weight:700;
+             border:1px solid rgba(255,255,255,.06);border-radius:12px;cursor:pointer;
+             transition:background .1s;}
+.pin-btn-cal:active{background:#334155;}
+</style>
+<script>
+const CAL_PIN = "2305";
+let calPinStr = '';
+
+// Controlla sessione
+(function(){
+    if(sessionStorage.getItem('cal_unlocked')==='1'){
+        document.getElementById('pin-screen').style.display='none';
+    }
+})();
+
+function calPinKey(n){
+    if(calPinStr.length>=4)return;
+    calPinStr+=String(n);
+    calPinRefresh();
+    if(calPinStr.length===4)setTimeout(calPinSubmit,120);
+}
+function calPinClear(){
+    calPinStr='';
+    calPinRefresh();
+    document.getElementById('pin-err-txt').style.display='none';
+}
+function calPinRefresh(){
+    const dots=document.querySelectorAll('.pin-dot-cal');
+    const okBtn=document.getElementById('pin-ok-cal');
+    dots.forEach((d,i)=>{
+        if(i<calPinStr.length){d.classList.add('filled');}
+        else{d.classList.remove('filled');}
+    });
+    if(calPinStr.length===4){
+        okBtn.style.background='#d97706';okBtn.style.color='#451a03';okBtn.style.borderColor='#d97706';
+    }else{
+        okBtn.style.background='#0f172a';okBtn.style.color='#475569';okBtn.style.borderColor='rgba(255,255,255,.06)';
+    }
+}
+function calPinSubmit(){
+    if(calPinStr===CAL_PIN){
+        sessionStorage.setItem('cal_unlocked','1');
+        const screen=document.getElementById('pin-screen');
+        screen.style.transition='opacity .3s';screen.style.opacity='0';
+        setTimeout(()=>{screen.style.display='none';},300);
+    }else if(calPinStr.length===4){
+        const dots=document.getElementById('pin-dots-cal');
+        dots.classList.add('pin-shake');
+        document.querySelectorAll('.pin-dot-cal').forEach(d=>{d.style.borderColor='#ef4444';d.style.background='rgba(239,68,68,.2)';});
+        document.getElementById('pin-err-txt').style.display='inline';
+        setTimeout(()=>{dots.classList.remove('pin-shake');calPinClear();},450);
+    }
+}
+// Supporto tastiera fisica
+document.addEventListener('keydown',function(e){
+    if(document.getElementById('pin-screen').style.display==='none')return;
+    if(e.key>='0'&&e.key<='9')calPinKey(parseInt(e.key));
+    else if(e.key==='Backspace')calPinClear();
+    else if(e.key==='Enter')calPinSubmit();
+});
+</script>
+
 </body>
 </html>
