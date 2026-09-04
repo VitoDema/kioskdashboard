@@ -16,21 +16,25 @@
         body{user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
              font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
         ::-webkit-scrollbar{display:none}
-        @keyframes bounceIn{
-            0%{opacity:0;transform:scale(.5)}60%{opacity:1;transform:scale(1.05)}
-            80%{transform:scale(.96)}100%{transform:scale(1)}}
+        @keyframes bounceIn{0%{opacity:0;transform:scale(.5)}60%{opacity:1;transform:scale(1.05)}80%{transform:scale(.96)}100%{transform:scale(1)}}
+        @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
         .anim-bounce{animation:bounceIn .45s cubic-bezier(.22,1,.36,1)}
-        .room-card{border:1px solid rgba(255,255,255,.04);border-left-width:3px;
-                   transition:background-color .4s ease,border-left-color .4s ease}
-        /* Lock overlay: top/left/right/bottom espliciti per WebView Android */
-        .lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;
-                      display:flex;flex-direction:column;align-items:center;justify-content:center;
-                      gap:8px;background:rgba(3,7,18,1);z-index:5;}
-        #pin-modal{z-index:80}#alert-modal{z-index:70}
+        .anim-slide{animation:slideIn .25s ease-out}
+        .room-card{border:1px solid rgba(255,255,255,.04);border-left-width:3px;transition:background-color .4s ease,border-left-color .4s ease}
+        .lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(3,7,18,1);z-index:5}
+        .notif-item{border-top:1px solid rgba(255,255,255,.05);cursor:pointer;transition:background .15s}
+        .notif-item:first-child{border-top:none}
+        .notif-item:active{background:rgba(255,255,255,.04)}
+        #pin-modal{z-index:90}
+        #alert-modal{z-index:80}
+        #notif-panel{z-index:75}
+        #notif-overlay{z-index:74}
+        #sim-menu{z-index:70}
     </style>
 </head>
 <body class="flex flex-col bg-slate-950 text-slate-100" onclick="onTouch()">
 
+<!-- HEADER -->
 <header class="flex items-center justify-between px-5 shrink-0 bg-slate-900 border-b border-white/5 shadow-xl"
         style="min-height:64px;padding-top:8px;padding-bottom:8px;">
     <div class="flex items-center gap-3">
@@ -40,9 +44,7 @@
         </div>
         <div>
             <div class="font-black text-white leading-none" style="font-size:clamp(13px,3vw,20px);">A Casa di Gina</div>
-            <div class="text-emerald-400 uppercase tracking-widest font-semibold mt-0.5" style="font-size:clamp(8px,1.5vw,11px);">
-                &amp; Padre Sergio &middot; Hub Operativo
-            </div>
+            <div class="text-emerald-400 uppercase tracking-widest font-semibold mt-0.5" style="font-size:clamp(8px,1.5vw,11px);">&amp; Padre Sergio &middot; Hub Operativo</div>
         </div>
     </div>
     <div id="hdr-date" class="text-base font-medium text-slate-400 capitalize hidden sm:block"></div>
@@ -67,6 +69,13 @@
             <i class="fa-regular fa-clock text-emerald-500 text-sm"></i>
             <span id="hdr-clock" class="font-mono font-black text-white tracking-tighter" style="font-size:clamp(20px,4vw,30px);">--:--</span>
         </div>
+        <!-- Campanella notifiche -->
+        <button id="btn-notif" onclick="openNotifPanel(event)"
+                class="relative flex items-center justify-center w-10 h-10 rounded-xl transition-all"
+                style="background:#1e293b;border:1px solid rgba(255,255,255,.07);">
+            <i class="fa-solid fa-bell text-slate-400"></i>
+            <span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;padding:0 3px;">0</span>
+        </button>
         <button id="btn-lock" onclick="onLockPress(event)"
                 class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition-all"
                 style="background:#d97706;color:#451a03;">
@@ -76,6 +85,7 @@
     </div>
 </header>
 
+<!-- MAIN -->
 <main class="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
     <section class="flex flex-col gap-2 min-h-0" style="flex:58;">
         <div class="flex items-center gap-2 px-1 shrink-0">
@@ -84,27 +94,19 @@
             <div class="flex-1 h-px bg-emerald-900/30"></div>
             <span class="text-xs text-slate-700">Holidu &amp; Airbnb</span>
         </div>
-        <div id="card-ester" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0"
-             style="background:#0a0f1a;border-left-color:#475569;">
-            <div class="px-3 py-2 flex items-center justify-between shrink-0"
-                 style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
+        <div id="card-ester" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0" style="background:#0a0f1a;border-left-color:#475569;">
+            <div class="px-3 py-2 flex items-center justify-between shrink-0" style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
                 <span class="font-bold text-slate-200 text-base">La Camera di Ester</span>
-                <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
-                      style="background:#475569;">caricamento...</span>
+                <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide" style="background:#475569;">caricamento...</span>
             </div>
-            <div class="flex-1 flex items-center justify-center text-slate-700">
-                <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>
+            <div class="flex-1 flex items-center justify-center text-slate-700"><i class="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>
         </div>
-        <div id="card-ragazze" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0"
-             style="background:#0a0f1a;border-left-color:#475569;">
-            <div class="px-3 py-2 flex items-center justify-between shrink-0"
-                 style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
+        <div id="card-ragazze" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0" style="background:#0a0f1a;border-left-color:#475569;">
+            <div class="px-3 py-2 flex items-center justify-between shrink-0" style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
                 <span class="font-bold text-slate-200 text-base">La Camera delle Ragazze</span>
-                <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
-                      style="background:#475569;">caricamento...</span>
+                <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide" style="background:#475569;">caricamento...</span>
             </div>
-            <div class="flex-1 flex items-center justify-center text-slate-700">
-                <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>
+            <div class="flex-1 flex items-center justify-center text-slate-700"><i class="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>
         </div>
     </section>
     <section class="flex flex-col gap-2 min-h-0" style="flex:42;">
@@ -114,20 +116,17 @@
             <div class="flex-1 h-px bg-blue-900/30"></div>
             <span class="text-xs text-slate-700">Airbnb</span>
         </div>
-        <div id="card-sergio" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0"
-             style="background:#0a0f1a;border-left-color:#475569;">
-            <div class="px-3 py-2 flex items-center justify-between shrink-0"
-                 style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
+        <div id="card-sergio" class="room-card flex-1 rounded-2xl overflow-hidden flex flex-col min-h-0" style="background:#0a0f1a;border-left-color:#475569;">
+            <div class="px-3 py-2 flex items-center justify-between shrink-0" style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
                 <span class="font-bold text-slate-200 text-base">Padre Sergio</span>
-                <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
-                      style="background:#475569;">caricamento...</span>
+                <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide" style="background:#475569;">caricamento...</span>
             </div>
-            <div class="flex-1 flex items-center justify-center text-slate-700">
-                <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>
+            <div class="flex-1 flex items-center justify-center text-slate-700"><i class="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>
         </div>
     </section>
 </main>
 
+<!-- FOOTER -->
 <footer class="shrink-0 flex items-center justify-between px-5 bg-slate-950 border-t border-white/5" style="height:46px;">
     <div class="flex items-center gap-2.5">
         <div id="sync-dot" class="w-2 h-2 rounded-full transition-all duration-500" style="background:#475569;"></div>
@@ -135,29 +134,22 @@
     </div>
     <div class="flex items-center gap-4 text-xs text-slate-700">
         <span>Prossimo: <span id="next-sync">--:--</span></span>
-        <button onclick="forceSync()" class="hover:text-slate-400 transition-colors flex items-center gap-1">
-            <i class="fa-solid fa-rotate-right"></i> Aggiorna
-        </button>
-        <button onclick="toggleSim(event)" class="hover:text-slate-500 transition-colors ml-2">
-            <i class="fa-solid fa-gear"></i>
-        </button>
+        <button onclick="forceSync()" class="hover:text-slate-400 transition-colors flex items-center gap-1"><i class="fa-solid fa-rotate-right"></i> Aggiorna</button>
+        <button onclick="toggleSim(event)" class="hover:text-slate-500 transition-colors ml-2"><i class="fa-solid fa-gear"></i></button>
     </div>
 </footer>
 
-<div id="sim-menu" class="hidden fixed bottom-12 right-4 rounded-xl p-3 shadow-2xl"
-     style="z-index:60;background:#1e293b;border:1px solid rgba(255,255,255,.08);min-width:220px;">
+<!-- SIM MENU -->
+<div id="sim-menu" style="display:none;position:fixed;bottom:52px;right:16px;background:#1e293b;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;min-width:220px;">
     <div class="text-xs text-slate-600 font-bold uppercase tracking-wider mb-2 pb-2 border-b border-white/5">Strumenti Test</div>
-    <button onclick="simulate('new')" class="w-full text-left text-sm text-emerald-400 hover:bg-emerald-900/20 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors">
-        <i class="fa-solid fa-bell w-4"></i> Simula Nuova Prenotazione</button>
-    <button onclick="simulate('cancel')" class="w-full text-left text-sm text-red-400 hover:bg-red-900/20 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors">
-        <i class="fa-solid fa-xmark w-4"></i> Simula Cancellazione</button>
-    <button onclick="forceSync();hideSim();" class="w-full text-left text-sm text-blue-400 hover:bg-blue-900/20 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors">
-        <i class="fa-solid fa-rotate-right w-4"></i> Forza Sincronizzazione</button>
+    <button onclick="simulate('new')"    class="w-full text-left text-sm text-emerald-400 hover:bg-emerald-900/20 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors"><i class="fa-solid fa-bell w-4"></i> Simula Nuova Prenotazione</button>
+    <button onclick="simulate('cancel')" class="w-full text-left text-sm text-red-400 hover:bg-red-900/20 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors"><i class="fa-solid fa-xmark w-4"></i> Simula Cancellazione</button>
+    <button onclick="simulate('mod')"    class="w-full text-left text-sm text-amber-400 hover:bg-amber-900/20 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors"><i class="fa-solid fa-pen w-4"></i> Simula Modifica</button>
+    <button onclick="forceSync();toggleSim();" class="w-full text-left text-sm text-blue-400 hover:bg-blue-900/20 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors"><i class="fa-solid fa-rotate-right w-4"></i> Forza Sincronizzazione</button>
 </div>
 
-<!-- ALERT MODAL (con date check-in/out) -->
-<div id="alert-modal" class="hidden fixed inset-0 flex items-center justify-center p-6"
-     style="background:rgba(0,0,0,.85);">
+<!-- ALERT MODAL -->
+<div id="alert-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.85);">
     <div id="alert-wrap" class="w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl anim-bounce">
         <div id="alert-grad" class="p-1 rounded-3xl" style="background:linear-gradient(135deg,#10b981,#059669);">
             <div class="rounded-3xl p-7 relative overflow-hidden" style="background:#030712;">
@@ -168,28 +160,18 @@
                     <p id="alert-subtitle" class="text-sm text-slate-500 mb-5"></p>
                     <div class="w-full rounded-xl p-5 text-left mb-5" style="background:#0f172a;border:1px solid rgba(255,255,255,.06);">
                         <div id="alert-room" class="text-xl font-bold text-white mb-3"></div>
-                        <!-- Date check-in / check-out / notti -->
                         <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <div class="text-xs text-slate-600 uppercase tracking-wider mb-1">Check-in</div>
-                                <div id="alert-checkin" class="text-2xl font-black text-white">--/--</div>
-                            </div>
+                            <div><div class="text-xs text-slate-600 uppercase tracking-wider mb-1">Check-in</div><div id="alert-checkin" class="text-2xl font-black text-white">--/--</div></div>
                             <div class="text-slate-600 text-xl">&rarr;</div>
-                            <div>
-                                <div class="text-xs text-slate-600 uppercase tracking-wider mb-1">Check-out</div>
-                                <div id="alert-checkout" class="text-2xl font-black text-white">--/--</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-xs text-slate-600 uppercase tracking-wider mb-1">Notti</div>
-                                <div id="alert-nights" class="text-3xl font-black" style="color:#818cf8;">-</div>
-                            </div>
+                            <div><div class="text-xs text-slate-600 uppercase tracking-wider mb-1">Check-out</div><div id="alert-checkout" class="text-2xl font-black text-white">--/--</div></div>
+                            <div class="text-right"><div class="text-xs text-slate-600 uppercase tracking-wider mb-1">Notti</div><div id="alert-nights" class="text-3xl font-black" style="color:#818cf8;">-</div></div>
                         </div>
                         <div style="height:1px;background:rgba(255,255,255,.06);margin-bottom:12px;"></div>
                         <div class="flex items-center justify-between">
                             <span class="text-xs text-slate-600 uppercase tracking-wider">Ospite</span>
                             <span id="alert-guest" class="text-xl font-bold text-white">---</span>
                         </div>
-                        <div id="alert-phone-row" class="hidden flex items-center justify-between mt-2">
+                        <div id="alert-phone-row" style="display:none;" class="flex items-center justify-between mt-2">
                             <span class="text-xs text-slate-600 uppercase tracking-wider">Telefono</span>
                             <span id="alert-phone" class="text-sm font-mono text-blue-400"></span>
                         </div>
@@ -205,13 +187,29 @@
     </div>
 </div>
 
+<!-- NOTIFICATION PANEL (chiuso di default) -->
+<div id="notif-overlay" onclick="closeNotifPanel()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);"></div>
+<div id="notif-panel" style="display:none;position:fixed;top:0;right:0;height:100%;width:310px;background:#0f172a;border-left:1px solid rgba(255,255,255,.08);flex-direction:column;">
+    <div class="flex items-center justify-between px-4 py-3 shrink-0" style="background:#1e293b;border-bottom:1px solid rgba(255,255,255,.08);">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-bell text-slate-400 text-sm"></i>
+            <span class="font-bold text-white text-sm">Centro Notifiche</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="clearAllNotif()" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Cancella tutto</button>
+            <button onclick="closeNotifPanel()" class="text-slate-500 hover:text-slate-300 transition-colors text-xl leading-none">&times;</button>
+        </div>
+    </div>
+    <div id="notif-list" class="flex-1 overflow-y-auto"></div>
+    <div class="px-4 py-2 shrink-0 text-center" style="border-top:1px solid rgba(255,255,255,.05);">
+        <span id="notif-count-footer" class="text-xs text-slate-700">Nessuna notifica</span>
+    </div>
+</div>
+
 <!-- PIN MODAL -->
-<div id="pin-modal" class="hidden fixed inset-0 flex items-center justify-center"
-     style="background:rgba(3,7,18,.94);">
-    <div class="flex flex-col items-center rounded-2xl p-7 shadow-2xl"
-         style="background:#0f172a;border:1px solid rgba(255,255,255,.07);width:330px;">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-3"
-             style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);">
+<div id="pin-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;align-items:center;justify-content:center;background:rgba(3,7,18,.94);">
+    <div class="flex flex-col items-center rounded-2xl p-7 shadow-2xl" style="background:#0f172a;border:1px solid rgba(255,255,255,.07);width:330px;">
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);">
             <i class="fa-solid fa-lock text-amber-400 text-xl"></i>
         </div>
         <h3 class="text-lg font-bold text-white mb-1">Sblocco Sicurezza</h3>
@@ -263,6 +261,7 @@ const ST = {
 
 let isLocked=true, pinStr='', lockTimer=null, syncTimer=null;
 let prevUidMap=new Map(), firstLoad=true, lastRooms=null, alertData=null, audioCtx=null;
+let notifHistory=[], unreadCount=0;
 
 document.addEventListener('click', initAudio, {once:true});
 clockTick(); setInterval(clockTick, 1000);
@@ -284,9 +283,9 @@ function initAudio(){try{audioCtx=new(window.AudioContext||window.webkitAudioCon
 function playSound(type){
     if(!audioCtx){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return;}}
     if(audioCtx.state==='suspended')audioCtx.resume();
-    const notes=type==='new'
-        ?[{f:523,t:0},{f:659,t:.20},{f:784,t:.40},{f:1047,t:.60}]
-        :[{f:784,t:0},{f:659,t:.18},{f:523,t:.36},{f:392,t:.54}];
+    const notes={'new':[{f:523,t:0},{f:659,t:.20},{f:784,t:.40},{f:1047,t:.60}],
+                 'cancel':[{f:784,t:0},{f:659,t:.18},{f:523,t:.36},{f:392,t:.54}],
+                 'mod':[{f:659,t:0},{f:784,t:.20},{f:659,t:.40}]}[type]||[];
     notes.forEach(n=>{
         const osc=audioCtx.createOscillator(),g=audioCtx.createGain();
         osc.connect(g);g.connect(audioCtx.destination);
@@ -314,8 +313,16 @@ async function syncData(){
         if(data.uids){
             const newMap=new Map(data.uids.map(u=>[u.uid,u]));
             if(!firstLoad){
-                for(const[uid,u]of newMap){if(!prevUidMap.has(uid))alertNewBooking(u);}
-                for(const[uid,u]of prevUidMap){if(!newMap.has(uid))alertCancellation(u);}
+                // Raggruppa per stanza: cancel + nuova nella stessa sync = MODIFICA
+                const cancelledByRoom=new Map();
+                const addedByRoom=new Map();
+                for(const[uid,u]of prevUidMap){if(!newMap.has(uid))cancelledByRoom.set(u.room,u);}
+                for(const[uid,u]of newMap){if(!prevUidMap.has(uid))addedByRoom.set(u.room,u);}
+                for(const[room,newU]of addedByRoom){
+                    if(cancelledByRoom.has(room)){alertModification(newU,cancelledByRoom.get(room));cancelledByRoom.delete(room);}
+                    else alertNewBooking(newU);
+                }
+                for(const[room,cancelU]of cancelledByRoom)alertCancellation(cancelU);
             }
             prevUidMap=newMap;
         }
@@ -349,21 +356,17 @@ function buildCard(r,st,name,phone,reveal){
     const hasName=!!r.name;
     const displayName=hasName?name:(r.reservationUrl?'<span style="font-style:italic;color:#64748b;">Airbnb (nome non disp.)</span>':'N/D');
     const nameClass=hasName?(reveal?'text-white':'text-slate-600 font-mono tracking-widest'):'';
-
     const lockOv=!reveal?`<div class="lock-overlay">
         <i class="fa-solid fa-lock text-3xl text-amber-400"></i>
         <span class="text-xs text-amber-400/70 uppercase tracking-widest font-bold">Dati Protetti</span>
     </div>`:'';
-
     const hdr=`<div class="px-3 py-2 flex items-center justify-between shrink-0"
          style="background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);">
         <span class="font-bold text-slate-200 text-base">${r.room}</span>
         <span class="text-white text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide"
               style="background:${st.color};">${st.label}</span>
     </div>`;
-
     let body='';
-
     if(r.type==='free'){
         const nxt=r.nextArrival?`
             <div class="mt-3 pt-3 w-full" style="border-top:1px solid rgba(255,255,255,.08);">
@@ -386,7 +389,6 @@ function buildCard(r,st,name,phone,reveal){
                 <div class="text-2xl font-black uppercase tracking-widest" style="color:${st.color};">Disponibile</div>
                 ${nxt}
             </div></div>`;
-
     }else if(r.type==='blocked'){
         const nxt=r.nextArrival?`
             <div class="mt-auto pt-2" style="border-top:1px solid rgba(255,255,255,.07);">
@@ -401,79 +403,56 @@ function buildCard(r,st,name,phone,reveal){
                     <span class="text-sm font-semibold" style="color:${st.color};">Periodo bloccato</span>
                 </div>
                 <div class="flex items-center justify-between">
-                    <div>
-                        <div class="text-xs text-slate-300">Check-out</div>
-                        <div class="text-xl font-black" style="color:${st.color};">${r.checkOut||'--'}</div>
-                    </div>
-                    ${r.daysLeft!==null?`<div class="text-right">
-                        <div class="text-3xl font-black" style="color:${st.color};">${r.daysLeft}</div>
-                        <div class="text-xs text-slate-300">${r.daysLeft===1?'giorno rimasto':'giorni rimasti'}</div>
-                    </div>`:''}
+                    <div><div class="text-xs text-slate-300">Check-out</div><div class="text-xl font-black" style="color:${st.color};">${r.checkOut||'--'}</div></div>
+                    ${r.daysLeft!==null?`<div class="text-right"><div class="text-3xl font-black" style="color:${st.color};">${r.daysLeft}</div><div class="text-xs text-slate-300">${r.daysLeft===1?'giorno rimasto':'giorni rimasti'}</div></div>`:''}
                 </div>
                 ${nxt}
             </div></div>`;
-
     }else if(r.type==='changeover'){
         const noName='<span style="font-style:italic;color:#475569;font-size:13px;">Airbnb (nome N/D)</span>';
         body=`<div class="flex-1 relative" style="overflow:hidden;">${lockOv}
             <div class="flex flex-col p-3" style="height:100%;gap:6px;">
                 <div style="background:rgba(251,146,60,.1);border-radius:10px;padding:8px 10px;">
-                    <div style="font-size:9px;font-weight:700;color:#fb923c;letter-spacing:.08em;margin-bottom:3px;">
-                        <i class="fa-solid fa-plane-departure" style="margin-right:4px;"></i>PARTENZA OGGI</div>
-                    <div style="font-size:15px;font-weight:700;color:#f1f5f9;">
-                        ${r.departingGuest?escHtml(reveal?r.departingGuest:maskName(r.departingGuest)):noName}</div>
+                    <div style="font-size:9px;font-weight:700;color:#fb923c;letter-spacing:.08em;margin-bottom:3px;"><i class="fa-solid fa-plane-departure" style="margin-right:4px;"></i>PARTENZA OGGI</div>
+                    <div style="font-size:15px;font-weight:700;color:#f1f5f9;">${r.departingGuest?escHtml(reveal?r.departingGuest:maskName(r.departingGuest)):noName}</div>
                 </div>
                 <div style="background:rgba(129,140,248,.1);border-radius:10px;padding:8px 10px;">
-                    <div style="font-size:9px;font-weight:700;color:#818cf8;letter-spacing:.08em;margin-bottom:3px;">
-                        <i class="fa-solid fa-plane-arrival" style="margin-right:4px;"></i>ARRIVO OGGI</div>
-                    <div style="font-size:15px;font-weight:700;color:#f1f5f9;">
-                        ${r.name?escHtml(name):noName}</div>
+                    <div style="font-size:9px;font-weight:700;color:#818cf8;letter-spacing:.08em;margin-bottom:3px;"><i class="fa-solid fa-plane-arrival" style="margin-right:4px;"></i>ARRIVO OGGI</div>
+                    <div style="font-size:15px;font-weight:700;color:#f1f5f9;">${r.name?escHtml(name):noName}</div>
                     ${r.checkOut?`<div style="font-size:11px;color:#64748b;margin-top:2px;">fino al ${r.checkOut}${r.nights?' &middot; '+r.nights+'n':''}</div>`:''}
-                    ${(reveal&&phone)?`<div style="font-size:12px;color:#60a5fa;font-family:monospace;margin-top:2px;">
-                        <i class="fa-solid fa-phone" style="font-size:10px;color:#475569;margin-right:4px;"></i>${phone}</div>`:''}
+                    ${(reveal&&phone)?`<div style="font-size:12px;color:#60a5fa;font-family:monospace;margin-top:2px;"><i class="fa-solid fa-phone" style="font-size:10px;color:#475569;margin-right:4px;"></i>${phone}</div>`:''}
                 </div>
             </div></div>`;
-
     }else if(r.type==='error'){
         body=`<div class="flex-1 flex flex-col items-center justify-center p-5 gap-2">
             <i class="fa-solid ${st.icon} text-4xl text-red-500"></i>
             <div class="text-base font-bold text-red-400">Errore Connessione</div>
             <div class="text-xs text-slate-600 text-center">${escHtml(r.errorMsg||'Verifica la configurazione')}</div>
         </div>`;
-
     }else{
         let infoText='';
         if(r.type==='arrival')   infoText=`Check-in oggi &rarr; ${r.checkOut}${r.nights?' &middot; '+r.nights+' notti':''}`;
         if(r.type==='departure') infoText=`Check-out oggi &middot; arrivato il ${r.checkIn}`;
         if(r.type==='occupied')  infoText=`Dal ${r.checkIn} al ${r.checkOut} &middot; ${r.nights} notti`;
-
         const daysRow=(r.daysLeft!==null&&r.type!=='departure')?`
             <div class="flex items-center justify-between px-3 py-2 rounded-lg" style="background:rgba(255,255,255,.04);">
                 <span class="text-xs text-slate-300">Rimangono</span>
                 <span class="font-bold" style="color:${st.color};">${r.daysLeft} ${r.daysLeft===1?'giorno':'giorni'}</span>
             </div>`:'';
-
         const phoneRow=phone?`
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-phone text-slate-600 text-sm w-5 shrink-0"></i>
                 <span class="text-sm font-mono ${reveal?'text-blue-300':'text-slate-700'}">${phone}</span>
             </div>`:'';
-
         const resRow=(reveal&&r.reservationCode)?`
             <div class="flex items-center gap-2">
                 <i class="fa-brands fa-airbnb text-red-400 text-sm w-5 shrink-0"></i>
                 <span class="text-xs text-slate-300">Cod. <span class="font-mono font-bold text-slate-300">${r.reservationCode}</span></span>
             </div>`:'';
-
         const nextRow=(r.nextArrival&&r.type!=='arrival')?`
             <div class="mt-auto pt-2" style="border-top:1px solid rgba(255,255,255,.07);">
-                <span class="text-xs text-slate-600">
-                    Prossimo &rarr; ${reveal?(r.nextArrival.name||'Airbnb'):maskName(r.nextArrival.name||'Airbnb')}
-                    &middot; ${r.nextArrival.date}
-                    ${r.nextArrival.nights?' ('+r.nextArrival.nights+'n)':''}
-                </span>
+                <span class="text-xs text-slate-600">Prossimo &rarr; ${reveal?(r.nextArrival.name||'Airbnb'):maskName(r.nextArrival.name||'Airbnb')} &middot; ${r.nextArrival.date}${r.nextArrival.nights?' ('+r.nextArrival.nights+'n)':''}</span>
             </div>`:'';
-
         body=`<div class="flex-1 relative" style="overflow:hidden;">${lockOv}
             <div class="flex flex-col p-3" style="height:100%;gap:8px;overflow-y:auto;-webkit-overflow-scrolling:touch;">
                 <div class="flex items-center gap-2">
@@ -491,6 +470,100 @@ function buildCard(r,st,name,phone,reveal){
     return hdr+body;
 }
 
+// ── CENTRO NOTIFICHE ───────────────────────────────────────────────
+function pushNotif(entry){
+    entry.time=new Date();
+    notifHistory.unshift(entry);
+    if(notifHistory.length>50)notifHistory.pop();
+    unreadCount++;
+    updateNotifBadge();
+    renderNotifList();
+}
+function updateNotifBadge(){
+    const badge=document.getElementById('notif-badge');
+    if(unreadCount>0){
+        badge.textContent=unreadCount>9?'9+':String(unreadCount);
+        badge.style.display='flex';
+        document.getElementById('btn-notif').style.borderColor='rgba(239,68,68,.4)';
+    }else{
+        badge.style.display='none';
+        document.getElementById('btn-notif').style.borderColor='rgba(255,255,255,.07)';
+    }
+}
+const NOTIF_CFG={
+    'new':    {icon:'fa-calendar-check', color:'#34d399', label:'Nuova Prenotazione'},
+    'cancel': {icon:'fa-calendar-xmark', color:'#f87171', label:'Cancellazione'},
+    'mod':    {icon:'fa-calendar-pen',   color:'#fbbf24', label:'Modifica Prenotazione'}
+};
+function renderNotifList(){
+    const list=document.getElementById('notif-list');
+    const footer=document.getElementById('notif-count-footer');
+    if(notifHistory.length===0){
+        list.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:#334155;padding:40px 20px;text-align:center;"><i class="fa-regular fa-bell-slash" style="font-size:28px;"></i><span style="font-size:13px;">Nessuna notifica</span></div>';
+        footer.textContent='Nessuna notifica';
+        return;
+    }
+    footer.textContent=notifHistory.length+' notifiche salvate';
+    list.innerHTML=notifHistory.map((n,i)=>{
+        const cfg=NOTIF_CFG[n.type]||NOTIF_CFG['new'];
+        const t=n.time;
+        const ts=t.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+' '+t.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+        const dates=(n.checkIn&&n.checkOut)?n.checkIn+' &rarr; '+n.checkOut+(n.nights?' &middot; '+n.nights+'n':''):'';
+        return `<div class="notif-item" style="padding:12px 16px;" onclick="reopenNotif(${i})">
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+                <div style="width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.05);">
+                    <i class="fa-solid ${cfg.icon}" style="font-size:13px;color:${cfg.color};"></i>
+                </div>
+                <div style="min-width:0;flex:1;">
+                    <div style="font-size:12px;font-weight:700;color:${cfg.color};">${cfg.label}</div>
+                    <div style="font-size:12px;color:#94a3b8;">${escHtml(n.room||'')}</div>
+                    ${dates?`<div style="font-size:11px;color:#475569;margin-top:1px;">${dates}</div>`:''}
+                    <div style="font-size:11px;color:#94a3b8;margin-top:1px;">${n.name?escHtml(n.name):'<span style="font-style:italic;color:#334155;">Airbnb</span>'}</div>
+                    <div style="font-size:10px;color:#334155;margin-top:2px;">${ts}</div>
+                </div>
+                <i class="fa-solid fa-chevron-right" style="font-size:10px;color:#334155;margin-top:4px;flex-shrink:0;"></i>
+            </div>
+        </div>`;
+    }).join('');
+}
+function reopenNotif(idx){
+    const n=notifHistory[idx];
+    if(!n)return;
+    closeNotifPanel();
+    alertData=n;
+    // Configura popup in base al tipo
+    const gradMap={'new':'linear-gradient(135deg,#10b981,#059669)','cancel':'linear-gradient(135deg,#ef4444,#dc2626)','mod':'linear-gradient(135deg,#f59e0b,#d97706)'};
+    const glowMap={'new':'#10b981','cancel':'#ef4444','mod':'#f59e0b'};
+    const iconMap={'new':'fa-solid fa-calendar-check text-6xl text-emerald-400 mb-4 fa-bounce','cancel':'fa-solid fa-calendar-xmark text-6xl text-red-400 mb-4 fa-shake','mod':'fa-solid fa-calendar-pen text-6xl text-amber-400 mb-4 fa-bounce'};
+    const titleMap={'new':'Nuova Prenotazione!','cancel':'Prenotazione Cancellata!','mod':'Prenotazione Modificata!'};
+    document.getElementById('alert-grad').style.background=gradMap[n.type]||gradMap['new'];
+    document.getElementById('alert-glow').style.background=glowMap[n.type]||'#10b981';
+    document.getElementById('alert-icon').className=iconMap[n.type]||iconMap['new'];
+    document.getElementById('alert-title').textContent=titleMap[n.type]||'Notifica';
+    document.getElementById('alert-subtitle').textContent=n.property||'';
+    document.getElementById('alert-room').textContent=n.room||'';
+    fillAlertDates(n);
+    refreshAlertBtn();
+    showModal('alert-modal');
+}
+function openNotifPanel(e){
+    if(e)e.stopPropagation();
+    unreadCount=0;updateNotifBadge();
+    const p=document.getElementById('notif-panel');
+    p.style.display='flex';
+    p.classList.add('anim-slide');
+    setTimeout(()=>p.classList.remove('anim-slide'),300);
+    document.getElementById('notif-overlay').style.display='block';
+}
+function closeNotifPanel(){
+    document.getElementById('notif-panel').style.display='none';
+    document.getElementById('notif-overlay').style.display='none';
+}
+function clearAllNotif(){
+    notifHistory.length=0;unreadCount=0;
+    updateNotifBadge();renderNotifList();
+}
+
 // ── ALERTS ─────────────────────────────────────────────────────────
 function fillAlertDates(u){
     document.getElementById('alert-checkin').textContent  = u.checkIn  || '--/--';
@@ -499,8 +572,8 @@ function fillAlertDates(u){
     document.getElementById('alert-guest').textContent    = isLocked ? maskName(u.name||'Airbnb') : (u.name||'Airbnb');
     const phRow=document.getElementById('alert-phone-row');
     const phVal=document.getElementById('alert-phone');
-    if(u.phone && !isLocked){phRow.classList.remove('hidden');phVal.textContent=u.phone;}
-    else phRow.classList.add('hidden');
+    if(u.phone&&!isLocked){phRow.style.display='flex';phVal.textContent=u.phone;}
+    else phRow.style.display='none';
 }
 function alertNewBooking(u){
     playSound('new');alertData=u;
@@ -511,7 +584,8 @@ function alertNewBooking(u){
     document.getElementById('alert-subtitle').textContent=u.property||'';
     document.getElementById('alert-room').textContent=u.room||'';
     fillAlertDates(u);
-    refreshAlertBtn();showEl('alert-modal');
+    refreshAlertBtn();showModal('alert-modal');
+    pushNotif({type:'new',room:u.room,property:u.property,name:u.name,checkIn:u.checkIn,checkOut:u.checkOut,nights:u.nights,phone:u.phone||''});
 }
 function alertCancellation(u){
     playSound('cancel');alertData=u;
@@ -522,31 +596,45 @@ function alertCancellation(u){
     document.getElementById('alert-subtitle').textContent=u.property||'';
     document.getElementById('alert-room').textContent=u.room||'';
     fillAlertDates(u);
-    refreshAlertBtn();showEl('alert-modal');
+    refreshAlertBtn();showModal('alert-modal');
+    pushNotif({type:'cancel',room:u.room,property:u.property,name:u.name,checkIn:u.checkIn,checkOut:u.checkOut,nights:u.nights,phone:u.phone||''});
+}
+function alertModification(newU,oldU){
+    playSound('mod');alertData=newU;
+    document.getElementById('alert-grad').style.background='linear-gradient(135deg,#f59e0b,#d97706)';
+    document.getElementById('alert-glow').style.background='#f59e0b';
+    document.getElementById('alert-icon').className='fa-solid fa-calendar-pen text-6xl text-amber-400 mb-4 fa-bounce';
+    document.getElementById('alert-title').textContent='Prenotazione Modificata!';
+    document.getElementById('alert-subtitle').textContent=newU.property||'';
+    document.getElementById('alert-room').textContent=newU.room||'';
+    fillAlertDates(newU);
+    refreshAlertBtn();showModal('alert-modal');
+    pushNotif({type:'mod',room:newU.room,property:newU.property,name:newU.name,checkIn:newU.checkIn,checkOut:newU.checkOut,nights:newU.nights,phone:newU.phone||''});
 }
 function simulate(type){
-    hideSim();
-    const fakeDate={checkIn:'10/09',checkOut:'14/09',nights:4};
-    if(type==='new') alertNewBooking({name:'Mario Verdi',room:'La Camera di Ester',property:'A Casa di Gina',uid:'__sim__',...fakeDate});
-    else alertCancellation({name:'Giulia Neri',room:'Padre Sergio',property:'Padre Sergio',uid:'__sim2__',...fakeDate});
+    toggleSim();
+    const fakeDate={checkIn:'10/09',checkOut:'14/09',nights:4,phone:'****4257'};
+    const fakeBase={property:'A Casa di Gina',uid:'__sim__',...fakeDate};
+    if(type==='new')    alertNewBooking({name:'Mario Verdi',room:'La Camera di Ester',...fakeBase});
+    else if(type==='cancel') alertCancellation({name:'Giulia Neri',room:'Padre Sergio',property:'Padre Sergio',...fakeDate,uid:'__sim2__'});
+    else alertModification({name:'Luca Bianchi',room:'Padre Sergio',property:'Padre Sergio',...fakeDate,uid:'__sim3__'},{});
 }
-function onAlertBtn(){if(isLocked)showEl('pin-modal');else{hideEl('alert-modal');alertData=null;}}
+function onAlertBtn(){if(isLocked)showModal('pin-modal');else{hideModal('alert-modal');alertData=null;}}
 function refreshAlertBtn(){
     const btn=document.getElementById('alert-btn');
     if(isLocked){btn.style.cssText='background:#d97706;color:#451a03;';btn.innerHTML='<i class="fa-solid fa-lock"></i> Sblocca per i Dettagli';}
     else{btn.style.cssText='background:#1e293b;color:#94a3b8;border:1px solid #334155;';btn.innerHTML='<i class="fa-solid fa-check"></i> Chiudi Avviso';}
     if(alertData){
-        document.getElementById('alert-guest').textContent=
-            isLocked?maskName(alertData.name||'Airbnb'):(alertData.name||'Airbnb');
+        document.getElementById('alert-guest').textContent=isLocked?maskName(alertData.name||'Airbnb'):(alertData.name||'Airbnb');
         const phRow=document.getElementById('alert-phone-row');
         const phVal=document.getElementById('alert-phone');
-        if(alertData.phone&&!isLocked){phRow.classList.remove('hidden');phVal.textContent=alertData.phone;}
-        else phRow.classList.add('hidden');
+        if(alertData.phone&&!isLocked){phRow.style.display='flex';phVal.textContent=alertData.phone;}
+        else phRow.style.display='none';
     }
 }
 
 // ── LOCK ───────────────────────────────────────────────────────────
-function onLockPress(e){e&&e.stopPropagation();isLocked?showEl('pin-modal'):setLock(true);}
+function onLockPress(e){e&&e.stopPropagation();isLocked?showModal('pin-modal'):setLock(true);}
 function onTouch(){if(!isLocked)resetLockTimer();}
 function setLock(locked){
     isLocked=locked;
@@ -554,14 +642,13 @@ function setLock(locked){
     if(locked){btn.style.cssText='background:#d97706;color:#451a03;';ico.className='fa-solid fa-lock text-base';lbl.textContent='Sblocca';clearTimeout(lockTimer);}
     else{btn.style.cssText='background:#059669;color:#022c22;';ico.className='fa-solid fa-unlock text-base';lbl.textContent='Blocca (60s)';resetLockTimer();}
     if(lastRooms)renderRooms(lastRooms);
-    if(!document.getElementById('alert-modal').classList.contains('hidden')){
-        refreshAlertBtn();
-    }
+    const alertEl=document.getElementById('alert-modal');
+    if(alertEl.style.display!=='none')refreshAlertBtn();
 }
 function resetLockTimer(){clearTimeout(lockTimer);lockTimer=setTimeout(()=>setLock(true),60000);}
 
 // ── PIN ────────────────────────────────────────────────────────────
-function pinKey(n){if(pinStr.length>=4)return;pinStr+=n;pinRefresh();if(pinStr.length===4)setTimeout(pinSubmit,120);}
+function pinKey(n){if(pinStr.length>=4)return;pinStr+=String(n);pinRefresh();if(pinStr.length===4)setTimeout(pinSubmit,120);}
 function pinClear(){pinStr='';document.querySelectorAll('.pin-dot').forEach(d=>{d.textContent='';d.style.borderColor='#334155';d.style.background='#1e293b';});pinRefresh();}
 function pinRefresh(){
     const dots=document.querySelectorAll('.pin-dot'),ok=document.getElementById('pin-ok');
@@ -578,7 +665,7 @@ function pinSubmit(){
         setTimeout(pinClear,700);
     }
 }
-function pinClose(){hideEl('pin-modal');pinClear();}
+function pinClose(){hideModal('pin-modal');pinClear();}
 
 // ── CLOCK & METEO ──────────────────────────────────────────────────
 function clockTick(){
@@ -595,7 +682,7 @@ async function getWx(lat,lon,iconId,tempId){
         const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=Europe%2FRome`);
         const d=await r.json();
         const temp=Math.round(d.current.temperature_2m),w=wmo(d.current.weather_code);
-        document.getElementById(tempId).textContent=temp+'°';
+        document.getElementById(tempId).textContent=temp+'\u00b0';
         const ic=document.getElementById(iconId);ic.className='fa-solid '+w.i+' text-lg';ic.style.color=w.c;
     }catch(e){}
 }
@@ -613,16 +700,19 @@ function setSyncUI(state,detail){
     dot.style.background=s.c;dot.style.boxShadow='0 0 8px '+s.c+'90';
     msg.textContent=s.t;msg.style.color=state==='ok'?'#64748b':s.c;
 }
+
+// ── MODALS (usa style.display, no class toggle) ────────────────────
+function showModal(id){const el=document.getElementById(id);el.style.display='flex';}
+function hideModal(id){document.getElementById(id).style.display='none';}
+
+// ── UTILS ──────────────────────────────────────────────────────────
 function maskName(n){if(!n)return'***';return n.split(' ').map(p=>p[0]+'*'.repeat(Math.max(2,p.length-1))).join(' ');}
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function fmtTime(d){return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});}
-function showEl(id){document.getElementById(id).classList.remove('hidden');}
-function hideEl(id){document.getElementById(id).classList.add('hidden');}
-function toggleSim(e){if(e)e.stopPropagation();document.getElementById('sim-menu').classList.toggle('hidden');}
-function hideSim(){hideEl('sim-menu');}
+function toggleSim(e){if(e)e.stopPropagation();const m=document.getElementById('sim-menu');m.style.display=m.style.display==='none'?'block':'none';}
 document.addEventListener('click',e=>{
     const m=document.getElementById('sim-menu');
-    if(!m.classList.contains('hidden')&&!m.contains(e.target))hideSim();
+    if(m.style.display!=='none'&&!m.contains(e.target))m.style.display='none';
 });
 </script>
 </body>
